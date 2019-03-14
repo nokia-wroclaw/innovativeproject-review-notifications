@@ -1,19 +1,15 @@
 {
-	"extends": [
-		"eslint:recommended",
-		"plugin:react/recommended"
-	],
-	"env": {
-		"browser": true,
-		"node": true,
-		"jest": true
-	},
-	"parser": "babel-eslint",
-	"plugins": [
-	  "react"
-	],
-	"rules": {
-		"quotes": ["error", "single"],
-		"eol-last": ["error", "always"]
-	}
+  "extends": ["eslint:recommended", "plugin:react/recommended"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "jest": true
+  },
+  "parser": "babel-eslint",
+  "plugins": ["react", "prettier"],
+  "rules": {
+    "quotes": ["error", "single"],
+    "eol-last": ["error", "always"],
+    "prettier/prettier": "error"
+  }
 }
