@@ -1,0 +1,16 @@
+language: node_js
+
+node_js:
+  - "10.15.3"
+
+before_script:
+  - "cd review-notifications"
+  - "yarn"
+
+script:
+  - "yarn lint"
+  - "yarn test"
+
+notifications:
+  slack: innoprojectsummer2019:fdHkFUL7PGRdik1mA9CQBapb
+    on_success: never
