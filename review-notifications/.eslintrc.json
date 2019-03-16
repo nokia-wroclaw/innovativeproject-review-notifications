@@ -8,6 +8,7 @@
   "parser": "babel-eslint",
   "plugins": ["react", "prettier"],
   "rules": {
+    "no-console": "off",
     "quotes": ["error", "single"],
     "eol-last": ["error", "always"],
     "prettier/prettier": "error"

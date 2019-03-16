@@ -2,17 +2,15 @@
   "manifest_version": 2,
   "version": "1.0",
   "name": "Review notifications",
-
   "icons": {
     "16": "git-icon.png",
     "48": "git-icon.png",
     "128": "git-icon.png"
   },
-
   "browser_action": {
     "default_popup": "index.html"
   },
-  "permissions": [
-  ],
+  "options_page": "index.html#options",
+  "permissions": ["storage"],
   "content_security_policy": "script-src 'self'   'sha256-5As4+3YpY62+l38PsxCEkjB1R4YtyktBtRScTJ3fyLU='; object-src 'self'"
 }
