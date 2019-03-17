@@ -1,3 +1,5 @@
+/*global chrome*/
+
 var opt = {
   type: 'basic',
   title: 'Notification',
