@@ -7,26 +7,56 @@ class Options extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      user: '',
+      user: 'a',
+      auth: false,
+      token: '',
     };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
   }
 
-  handleChange(event) {
-    this.setState({ user: event.target.value });
+  handleChange(key) {
+    return function(event) {
+      var state = {};
+      state[key] =
+        event.target.type === 'checkbox'
+          ? event.target.checked
+          : event.target.value;
+      this.setState(state);
+    }.bind(this);
   }
 
   handleSubmit(event) {
     event.preventDefault();
-    chrome.storage.local.set({ username: this.state.user }, () => {
-      console.log('Username is set to ' + this.state.user);
-    });
+    chrome.storage.local.set(
+      {
+        username: this.state.user,
+        auth: this.state.auth,
+        token: this.state.token,
+      },
+      () => {
+        console.log(
+          'username: ' +
+            this.state.user +
+            ',\npersonal access token: ' +
+            this.state.token +
+            ',\nshould authenticate with personal access token: ' +
+            this.state.auth
+        );
+      }
+    );
   }
 
   handleGet() {
-    chrome.storage.local.get(['username'], function(result) {
-      console.log('Username currently is ' + result.username);
+    chrome.storage.local.get(['username', 'auth', 'token'], function(result) {
+      console.log(
+        'username: ' +
+          result.username +
+          ',\npersonal access token: ' +
+          result.token +
+          ',\nshould authenticate with personal access token: ' +
+          result.auth
+      );
     });
   }
 
@@ -34,14 +64,37 @@ class Options extends Component {
     return (
       <div className="Options">
         <form onSubmit={this.handleSubmit}>
-          <label>
-            Username:
+          <div>
+            <label>
+              Username:
+              <input
+                type="text"
+                value={this.state.user}
+                onChange={this.handleChange('user')}
+              />
+            </label>
+          </div>
+          <div>
             <input
-              type="text"
-              value={this.state.user}
-              onChange={this.handleChange}
+              type="checkbox"
+              value={this.state.auth}
+              onChange={this.handleChange('auth')}
+              name="ifAuthToken"
             />
-          </label>
+            <label for="ifAuthToken">
+              Authenticate with personal access token
+            </label>
+          </div>
+          <div>
+            <label>
+              Your personal access token:
+              <input
+                type="text"
+                value={this.state.token}
+                onChange={this.handleChange('token')}
+              />
+            </label>
+          </div>
           <input type="submit" value="Submit" />
         </form>
 
