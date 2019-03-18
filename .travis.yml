@@ -12,5 +12,7 @@ script:
   - "yarn test"
 
 notifications:
-  slack: innoprojectsummer2019:fdHkFUL7PGRdik1mA9CQBapb
+  slack:
+    rooms:
+      - innoprojectsummer2019:fdHkFUL7PGRdik1mA9CQBapb
     on_success: never
