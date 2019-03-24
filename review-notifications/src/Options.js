@@ -150,7 +150,7 @@ class Options extends Component {
             <label>
               Your personal access token:
               <input
-                type="text"
+                type="password"
                 value={this.state.token}
                 onChange={e => this.handleChange('token', e)}
               />
