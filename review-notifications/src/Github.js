@@ -58,102 +58,102 @@ class Github extends Component {
     this.timer = setInterval(() => this.getPullRequests(), 60000);
   }
 
-  getPullRequests() {
+  addPRToList(prList, newPR) {
+    prList.push({
+      link: newPR.link,
+      title: newPR.title,
+      updated: newPR.updated,
+    });
+  }
+
+  extractDataFromPR(prObject) {
+    return {
+      link: prObject.html_url,
+      id: prObject.id,
+      title: prObject.title,
+      updated: prObject.updated_at,
+      creator: prObject.user.login,
+      assignees: prObject.assignees.map(assigner => assigner.login),
+      reviewers: prObject.requested_reviewers.map(rev => rev.login),
+    };
+  }
+
+  filterPullRequests(prData) {
+    let createdPR = [];
+    let assignedPR = [];
+    let reviewedPR = [];
+    [].concat.apply([], prData).forEach(prObject => {
+      if (prObject.creator === this.state.user) {
+        this.addPRToList(createdPR, prObject);
+      }
+      prObject.assignees.forEach(assigner => {
+        if (assigner === this.state.user)
+          this.addPRToList(assignedPR, prObject);
+      });
+      prObject.reviewers.forEach(reviewer => {
+        if (reviewer === this.state.user)
+          this.addPRToList(reviewedPR, prObject);
+      });
+    });
+    this.setState({
+      createdPR: createdPR,
+      assignedPR: assignedPR,
+      reviewedPR: reviewedPR,
+    });
+  }
+
+  async getPullRequests() {
     const query = `https://api.github.com/user/repos?access_token=${
       this.state.token
     }`;
-    axios
-      .get(query)
-      .then(response => {
-        return response.data.map(repo =>
-          repo.pulls_url.replace('{/number}', '')
-        );
-      })
-      .catch(error => {
-        console.log(error);
-      })
-      .then(prLinksList => {
-        axios
-          .all(
-            prLinksList.map(prLink =>
-              axios.get(`${prLink}?access_token=${this.state.token}`)
-            )
-          )
-          .then(results => {
-            return results.map(prList =>
-              prList.data.map(pullRequest => ({
-                link: pullRequest.html_url,
-                id: pullRequest.id,
-                title: pullRequest.title,
-                updated: pullRequest.updated_at,
-                creator: pullRequest.user.login,
-                assignees: pullRequest.assignees.map(
-                  assigner => assigner.login
-                ),
-                reviewers: pullRequest.requested_reviewers.map(
-                  rev => rev.login
-                ),
-              }))
-            );
-          })
-          .then(results => {
-            let createdPR = [];
-            let assignedPR = [];
-            let reviewedPR = [];
-            [].concat.apply([], results).forEach(prObject => {
-              if (prObject.creator === this.state.user) {
-                createdPR.push({
-                  link: prObject.link,
-                  title: prObject.title,
-                  updated: prObject.updated,
-                });
-              }
-              prObject.assignees.forEach(assigner => {
-                if (assigner === this.state.user)
-                  assignedPR.push({
-                    link: prObject.link,
-                    title: prObject.title,
-                    updated: prObject.updated,
-                  });
-              });
-              prObject.reviewers.forEach(reviewer => {
-                if (reviewer === this.state.user)
-                  reviewedPR.push({
-                    link: prObject.link,
-                    title: prObject.title,
-                    updated: prObject.updated,
-                  });
-              });
-            });
-            this.setState({
-              createdPR: createdPR,
-              assignedPR: assignedPR,
-              reviewedPR: reviewedPR,
-            });
-          });
-      })
-      .catch(error => {
-        console.log(error);
-      });
+    let prLinksList = [];
+    try {
+      const response = await axios.get(query);
+      prLinksList = response.data.map(repo =>
+        repo.pulls_url.replace('{/number}', '')
+      );
+    } catch (error) {
+      console.log(error);
+    }
+    try {
+      const pullRequests = await axios.all(
+        prLinksList.map(prLink =>
+          axios.get(`${prLink}?access_token=${this.state.token}`)
+        )
+      );
+      const prData = pullRequests.map(prList =>
+        prList.data.map(pullRequest => this.extractDataFromPR(pullRequest))
+      );
+      this.filterPullRequests(prData);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   listOfPullRequest() {
     let list = [];
     this.state.prOptions.forEach(option => {
-      if (option.value === 'Created' && option.isChecked)
-        list.push(...this.state.createdPR);
-      else if (option.value === 'Assigned' && option.isChecked)
-        list.push(...this.state.assignedPR);
-      else if (option.value === 'Mentioned' && option.isChecked)
-        list.push(...this.state.mentionedPR);
-      else if (option.value === 'Review request' && option.isChecked)
-        list.push(...this.state.reviewedPR);
+      if (option.isChecked)
+        switch (option.value) {
+          case 'Created':
+            list.push(...this.state.createdPR);
+            break;
+          case 'Assigned':
+            list.push(...this.state.assignedPR);
+            break;
+          case 'Mentioned':
+            list.push(...this.state.mentionedPR);
+            break;
+          case 'Review request':
+            list.push(...this.state.reviewedPR);
+            break;
+        }
     });
     return (
       <ul>
         {[...new Set(list)].map(pr => (
           <li key={pr.id}>
-            <a href={pr.link} target="_blank">
+            <a href={pr.link} target="_blank" rel="noopener noreferrer">
               {pr.title}
             </a>
             <p>last update: {pr.updated}</p>

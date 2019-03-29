@@ -12,6 +12,7 @@
     "no-console": "off",
     "quotes": ["error", "single"],
     "eol-last": ["error", "always"],
-    "prettier/prettier": "error"
+    "prettier/prettier": "error",
+    "react/jsx-no-target-blank": ["error", { "enforceDynamicLinks": "always" }]
   }
 }
