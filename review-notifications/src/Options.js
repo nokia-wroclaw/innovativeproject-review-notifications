@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const initialState = {
+export const initialState = {
   user: '',
   auth: false,
   token: '',

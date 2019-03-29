@@ -2,11 +2,13 @@
 
 import React, { Component } from 'react';
 import axios from 'axios';
+import { initialState } from './Options';
 
 class Github extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      haveData: false,
       user: '',
       auth: false,
       token: '',
@@ -20,8 +22,6 @@ class Github extends Component {
       assignedPR: [],
       mentionedPR: [],
       reviewedPR: [],
-      repoPulls: [],
-      pulls: [],
     };
     this.getPullRequests = this.getPullRequests.bind(this);
   }
@@ -32,18 +32,14 @@ class Github extends Component {
       function(result) {
         this.setState(
           {
-            user: result.username,
-            auth: result.auth,
-            token: result.token,
-            prOptions: result.prTypes,
+            user: result.username ? result.username : initialState.user,
+            auth: result.auth ? result.auth : initialState.auth,
+            token: result.token ? result.token : initialState.token,
+            prOptions: result.prTypes ? result.prTypes : initialState.prTypes,
           },
           () => {
-            if (this.state.token !== '' && this.state.auth) {
-              this.getPullRequests();
-              this.startTimer();
-            } else {
-              this.error = 'Token not provided';
-            }
+            this.getPullRequests();
+            this.startTimer();
           }
         );
       }.bind(this)
@@ -66,21 +62,50 @@ class Github extends Component {
     });
   }
 
-  extractDataFromPR(prObject) {
-    return {
-      link: prObject.html_url,
-      id: prObject.id,
-      title: prObject.title,
-      updated: prObject.updated_at,
-      creator: prObject.user.login,
-      assignees: prObject.assignees.map(assigner => assigner.login),
-      reviewers: prObject.requested_reviewers.map(rev => rev.login),
-    };
+  async findMentioned(commentsUrl) {
+    let response;
+    try {
+      response = await axios.get(
+        `${commentsUrl}?access_token=${this.state.token}`
+      );
+      let mentionedLists = response.data.map(comment =>
+        comment.body.match(/@[a-zA-Z]*/g)
+      );
+      let mentionedUsers = [];
+      mentionedLists.forEach(list =>
+        mentionedUsers.push(
+          ...(list !== null ? list.map(user => user.replace('@', '')) : [])
+        )
+      );
+      return [].concat.apply([], mentionedUsers);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async extractDataFromPR(prObject) {
+    let mentionedUsers;
+    try {
+      mentionedUsers = await this.findMentioned(prObject.comments_url);
+      return {
+        link: prObject.html_url,
+        id: prObject.id,
+        title: prObject.title,
+        updated: prObject.updated_at,
+        creator: prObject.user.login,
+        assignees: prObject.assignees.map(assigner => assigner.login),
+        reviewers: prObject.requested_reviewers.map(rev => rev.login),
+        mentioned: mentionedUsers ? mentionedUsers : [],
+      };
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   filterPullRequests(prData) {
     let createdPR = [];
     let assignedPR = [];
+    let mentionedPR = [];
     let reviewedPR = [];
     [].concat.apply([], prData).forEach(prObject => {
       if (prObject.creator === this.state.user) {
@@ -90,6 +115,10 @@ class Github extends Component {
         if (assigner === this.state.user)
           this.addPRToList(assignedPR, prObject);
       });
+      prObject.mentioned.forEach(mentionedUser => {
+        if (mentionedUser === this.state.user)
+          this.addPRToList(mentionedPR, prObject);
+      });
       prObject.reviewers.forEach(reviewer => {
         if (reviewer === this.state.user)
           this.addPRToList(reviewedPR, prObject);
@@ -98,14 +127,18 @@ class Github extends Component {
     this.setState({
       createdPR: createdPR,
       assignedPR: assignedPR,
+      mentionedPR: mentionedPR,
       reviewedPR: reviewedPR,
     });
   }
 
   async getPullRequests() {
-    const query = `https://api.github.com/user/repos?access_token=${
-      this.state.token
-    }`;
+    let query = `https://api.github.com/users/${this.state.user}/repos`;
+    if (this.state.token !== '' && this.state.auth) {
+      query = `https://api.github.com/user/repos?access_token=${
+        this.state.token
+      }`;
+    }
     let prLinksList = [];
     try {
       const response = await axios.get(query);
@@ -121,10 +154,18 @@ class Github extends Component {
           axios.get(`${prLink}?access_token=${this.state.token}`)
         )
       );
-      const prData = pullRequests.map(prList =>
-        prList.data.map(pullRequest => this.extractDataFromPR(pullRequest))
+      const prData = await Promise.all(
+        pullRequests.map(
+          async prList =>
+            await Promise.all(
+              prList.data.map(
+                async pullRequest => await this.extractDataFromPR(pullRequest)
+              )
+            )
+        )
       );
       this.filterPullRequests(prData);
+      this.setState({ haveData: true });
     } catch (error) {
       console.log(error);
     }
@@ -164,9 +205,18 @@ class Github extends Component {
   }
 
   render() {
+    let communicate;
+    if (!this.state.haveData) {
+      communicate = <p>Loading...</p>;
+    } else if (this.state.token == '' || !this.state.auth) {
+      communicate = <p>Add token to display more pull requests</p>;
+    } else {
+      communicate = <p />;
+    }
     return (
       <div>
-        <div>{this.listOfPullRequest()}</div>
+        <p>{communicate}</p>
+        {this.listOfPullRequest()}
       </div>
     );
   }
