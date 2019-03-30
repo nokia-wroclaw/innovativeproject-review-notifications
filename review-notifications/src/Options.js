@@ -4,6 +4,20 @@ import React, { Component } from 'react';
 import axios from 'axios';
 import './App.css';
 
+export const initialState = {
+  user: '',
+  auth: false,
+  token: '',
+  newRepo: '',
+  reposLinks: [],
+  prTypes: [
+    { id: 1, value: 'Created', isChecked: false },
+    { id: 2, value: 'Assigned', isChecked: false },
+    { id: 3, value: 'Mentioned', isChecked: false },
+    { id: 4, value: 'Review request', isChecked: false },
+  ],
+};
+
 class Options extends Component {
   constructor(props) {
     super(props);
@@ -13,12 +27,7 @@ class Options extends Component {
       token: '',
       newRepo: '',
       reposLinks: [],
-      prTypes: [
-        { id: 1, value: 'Created', isChecked: false },
-        { id: 2, value: 'Assigned', isChecked: false },
-        { id: 3, value: 'Mentioned', isChecked: false },
-        { id: 4, value: 'Review request', isChecked: false },
-      ],
+      prTypes: [],
     };
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
@@ -32,11 +41,13 @@ class Options extends Component {
       ['username', 'auth', 'token', 'prTypes', 'reposLinks'],
       function(result) {
         this.setState({
-          user: result.username,
-          auth: result.auth,
-          token: result.token,
-          prTypes: result.prTypes,
-          reposLinks: result.reposLinks,
+          user: result.username ? result.username : initialState.user,
+          auth: result.auth ? result.auth : initialState.auth,
+          token: result.token ? result.token : initialState.token,
+          prTypes: result.prTypes ? result.prTypes : initialState.prTypes,
+          reposLinks: result.reposLinks
+            ? result.reposLinks
+            : initialState.reposLinks,
         });
       }.bind(this)
     );
@@ -150,7 +161,7 @@ class Options extends Component {
             <label>
               Your personal access token:
               <input
-                type="text"
+                type="password"
                 value={this.state.token}
                 onChange={e => this.handleChange('token', e)}
               />
