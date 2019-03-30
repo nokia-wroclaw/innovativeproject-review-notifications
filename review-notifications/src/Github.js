@@ -17,18 +17,22 @@ class Github extends Component {
         { id: 2, value: 'Assigned', isChecked: false },
         { id: 3, value: 'Mentioned', isChecked: false },
         { id: 4, value: 'Review request', isChecked: false },
+        { id: 5, value: 'From followed repositories', isChecked: false },
       ],
+      followedRepos: [],
       createdPR: [],
       assignedPR: [],
       mentionedPR: [],
       reviewedPR: [],
+      followedPR: [],
     };
     this.getPullRequests = this.getPullRequests.bind(this);
+    this.getPRFromFollowedRepos = this.getPRFromFollowedRepos.bind(this);
   }
 
   componentDidMount() {
     chrome.storage.local.get(
-      ['username', 'auth', 'token', 'prTypes', 'reposLinks'],
+      ['username', 'auth', 'token', 'prTypes', 'followedRepos'],
       function(result) {
         this.setState(
           {
@@ -36,9 +40,13 @@ class Github extends Component {
             auth: result.auth ? result.auth : initialState.auth,
             token: result.token ? result.token : initialState.token,
             prOptions: result.prTypes ? result.prTypes : initialState.prTypes,
+            followedRepos: result.followedRepos
+              ? result.followedRepos
+              : initialState.followedRepos,
           },
           () => {
             this.getPullRequests();
+            this.getPRFromFollowedRepos();
             this.startTimer();
           }
         );
@@ -51,7 +59,10 @@ class Github extends Component {
   }
 
   startTimer() {
-    this.timer = setInterval(() => this.getPullRequests(), 60000);
+    this.timer = setInterval(() => {
+      this.getPullRequests();
+      this.getPRFromFollowedRepos();
+    }, 60000);
   }
 
   addPRToList(prList, newPR) {
@@ -60,6 +71,29 @@ class Github extends Component {
       title: newPR.title,
       updated: newPR.updated,
     });
+  }
+
+  async extractPullRequests(prLinksList) {
+    try {
+      const pullRequests = await axios.all(
+        prLinksList.map(prLink =>
+          axios.get(`${prLink}?access_token=${this.state.token}`)
+        )
+      );
+      const prData = await Promise.all(
+        pullRequests.map(
+          async prList =>
+            await Promise.all(
+              prList.data.map(
+                async pullRequest => await this.extractDataFromPR(pullRequest)
+              )
+            )
+        )
+      );
+      return prData;
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   async findMentioned(commentsUrl) {
@@ -147,21 +181,7 @@ class Github extends Component {
       console.log(error);
     }
     try {
-      const pullRequests = await axios.all(
-        prLinksList.map(prLink =>
-          axios.get(`${prLink}?access_token=${this.state.token}`)
-        )
-      );
-      const prData = await Promise.all(
-        pullRequests.map(
-          async prList =>
-            await Promise.all(
-              prList.data.map(
-                async pullRequest => await this.extractDataFromPR(pullRequest)
-              )
-            )
-        )
-      );
+      const prData = await this.extractPullRequests(prLinksList);
       this.filterPullRequests(prData);
       this.setState({ haveData: true });
     } catch (error) {
@@ -169,7 +189,25 @@ class Github extends Component {
     }
   }
 
-  listOfPullRequest() {
+  async getPRFromFollowedRepos() {
+    const fromFollowedRepoOpt = this.state.prOptions.find(
+      option =>
+        option.value === 'From followed repositories' &&
+        option.isChecked === true
+    );
+    if (fromFollowedRepoOpt) {
+      try {
+        const prData = await this.extractPullRequests(
+          this.state.followedRepos.map(pr => pr.prLink)
+        );
+        this.setState({ followedPR: [].concat.apply([], prData) });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
+
+  listOfPullRequests() {
     let list = [];
     this.state.prOptions.forEach(option => {
       if (option.isChecked)
@@ -186,21 +224,44 @@ class Github extends Component {
           case 'Review request':
             list.push(...this.state.reviewedPR);
             break;
+          case 'From followed repositories':
+            break;
           default:
             throw new Error('Value do not match any option.');
         }
     });
     return (
-      <ul>
-        {[...new Set(list)].map(pr => (
-          <li key={pr.id}>
-            <a href={pr.link} target="_blank" rel="noopener noreferrer">
-              {pr.title}
-            </a>
-            <p>last update: {pr.updated}</p>
-          </li>
-        ))}
-      </ul>
+      <>
+        <p>User related pull requests:</p>
+        <ul>
+          {[...new Set(list)].map(pr => (
+            <li key={pr.id}>
+              <a href={pr.link} target="_blank" rel="noopener noreferrer">
+                {pr.title}
+              </a>
+              <p>last update: {pr.updated}</p>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
+  listOfFollowedPullRequests() {
+    return (
+      <>
+        <p>Pull requests from followed repositories:</p>
+        <ul>
+          {this.state.followedPR.map(pr => (
+            <li key={pr.id}>
+              <a href={pr.link} target="_blank" rel="noopener noreferrer">
+                {pr.title}
+              </a>
+              <p>last update: {pr.updated}</p>
+            </li>
+          ))}
+        </ul>
+      </>
     );
   }
 
@@ -216,7 +277,8 @@ class Github extends Component {
     return (
       <div>
         <p>{communicate}</p>
-        {this.listOfPullRequest()}
+        {this.listOfPullRequests()}
+        {this.listOfFollowedPullRequests()}
       </div>
     );
   }
