@@ -63,15 +63,14 @@ class Github extends Component {
   }
 
   async findMentioned(commentsUrl) {
-    let response;
     try {
-      response = await axios.get(
+      const response = await axios.get(
         `${commentsUrl}?access_token=${this.state.token}`
       );
-      let mentionedLists = response.data.map(comment =>
+      const mentionedLists = response.data.map(comment =>
         comment.body.match(/@[a-zA-Z]*/g)
       );
-      let mentionedUsers = [];
+      const mentionedUsers = [];
       mentionedLists.forEach(list =>
         mentionedUsers.push(
           ...(list !== null ? list.map(user => user.replace('@', '')) : [])
@@ -84,9 +83,8 @@ class Github extends Component {
   }
 
   async extractDataFromPR(prObject) {
-    let mentionedUsers;
     try {
-      mentionedUsers = await this.findMentioned(prObject.comments_url);
+      const mentionedUsers = await this.findMentioned(prObject.comments_url);
       return {
         link: prObject.html_url,
         id: prObject.id,
@@ -103,10 +101,10 @@ class Github extends Component {
   }
 
   filterPullRequests(prData) {
-    let createdPR = [];
-    let assignedPR = [];
-    let mentionedPR = [];
-    let reviewedPR = [];
+    const createdPR = [];
+    const assignedPR = [];
+    const mentionedPR = [];
+    const reviewedPR = [];
     [].concat.apply([], prData).forEach(prObject => {
       if (prObject.creator === this.state.user) {
         this.addPRToList(createdPR, prObject);
@@ -188,6 +186,8 @@ class Github extends Component {
           case 'Review request':
             list.push(...this.state.reviewedPR);
             break;
+          default:
+            throw new Error('Value do not match any option.');
         }
     });
     return (
