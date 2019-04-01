@@ -45,9 +45,13 @@ class Github extends Component {
               : initialState.followedRepos,
           },
           () => {
-            this.getPullRequests();
             this.getPRFromFollowedRepos();
+            this.getPullRequests();
             this.startTimer();
+
+            // this.rememberState();
+            // this.startTimer();
+            // this.checkForDiffrences();
           }
         );
       }.bind(this)
@@ -60,9 +64,9 @@ class Github extends Component {
 
   startTimer() {
     this.timer = setInterval(() => {
-      this.getPullRequests();
+      this.checkForDiffrences();
       this.getPRFromFollowedRepos();
-    }, 60000);
+    }, 2000);
   }
 
   addPRToList(prList, newPR) {
@@ -70,6 +74,7 @@ class Github extends Component {
       link: newPR.link,
       title: newPR.title,
       updated: newPR.updated,
+      comments: newPR.comments,
     });
   }
 
@@ -119,6 +124,8 @@ class Github extends Component {
   async extractDataFromPR(prObject) {
     try {
       const mentionedUsers = await this.findMentioned(prObject.comments_url);
+      const comments = await this.extractComments(prObject);
+      console.log(comments);
       return {
         link: prObject.html_url,
         id: prObject.id,
@@ -128,6 +135,7 @@ class Github extends Component {
         assignees: prObject.assignees.map(assigner => assigner.login),
         reviewers: prObject.requested_reviewers.map(rev => rev.login),
         mentioned: mentionedUsers ? mentionedUsers : [],
+        comments_data: comments ? comments : [],
       };
     } catch (error) {
       console.log(error);
@@ -164,6 +172,36 @@ class Github extends Component {
     });
   }
 
+  checkForDiffrences() {
+    const state = this.state;
+    chrome.storage.local.get(
+      ['createdPR'],
+      function(result) {
+        if (typeof state !== 'undefined' && result.createdPR.length > 0)
+          state.createdPR.map(currCreatedPR => {
+            const pr = result.createdPR.filter(
+              resPr => resPr.link == currCreatedPR.link
+            );
+            if (currCreatedPR.updated != pr[0].updated)
+              this.findChanges(currCreatedPR, pr[0]);
+          });
+      }.bind(this)
+    );
+    this.rememberState();
+    this.getPullRequests();
+  }
+
+  findChanges(newPR, oldPR) {
+    var opt = {
+      type: 'basic',
+      title: 'Notification',
+      message: `${newPR.title} has changed!`,
+      iconUrl: 'git-icon.png',
+    };
+
+    chrome.notifications.create(opt);
+  }
+
   async getPullRequests() {
     let query = `https://api.github.com/users/${this.state.user}/repos`;
     if (this.state.token !== '' && this.state.auth) {
@@ -180,10 +218,27 @@ class Github extends Component {
     } catch (error) {
       console.log(error);
     }
+
+    const prData = await this.extractPullRequests(prLinksList);
+    this.filterPullRequests(prData);
+    this.setState({ haveData: true });
+  }
+
+  rememberState() {
+    chrome.storage.local.set({
+      createdPR: this.state.createdPR,
+      assignedPR: this.state.assignedPR,
+      mentionedPR: this.state.mentionedPR,
+      reviewedPR: this.state.reviewedPR,
+    });
+  }
+
+  async extractComments(prObject) {
     try {
-      const prData = await this.extractPullRequests(prLinksList);
-      this.filterPullRequests(prData);
-      this.setState({ haveData: true });
+      let comments_list = await axios.get(
+        `${prObject.review_comments_url}?access_token=${this.state.token}`
+      );
+      return comments_list;
     } catch (error) {
       console.log(error);
     }
@@ -240,11 +295,23 @@ class Github extends Component {
                 {pr.title}
               </a>
               <p>last update: {pr.updated}</p>
+              <p> {this.listComments(pr)} </p>
             </li>
           ))}
         </ul>
       </>
     );
+  }
+
+  listComments(prObject) {
+    // console.log(prObject.comments_data);
+    // console.log(prObject.mentionedUsers);
+    if (
+      prObject.comments_data !== undefined &&
+      prObject.comments_data.length > 0
+    ) {
+      return prObject.comments_data[0].body;
+    } else return 'There is no comments';
   }
 
   listOfFollowedPullRequests() {
