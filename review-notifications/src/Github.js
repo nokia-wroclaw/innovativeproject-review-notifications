@@ -28,8 +28,6 @@ class Github extends Component {
 
   componentDidMount() {
     this.getDataFromChromeStorage();
-    // this.listOfPullRequests();
-    // this.listOfFollowedPullRequests();
   }
 
   getDataFromChromeStorage() {
