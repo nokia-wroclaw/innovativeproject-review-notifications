@@ -30,14 +30,17 @@ function onStart() {
   chrome.storage.local.get(
     ['username', 'auth', 'token', 'prTypes', 'followedRepos'],
     function(result) {
-      (state.user = result.username),
-        (state.auth = result.auth),
-        (state.token = result.token),
-        (state.prOptions = result.prTypes),
-        (state.followedRepos = result.followedRepos);
-      getPRFromFollowedRepos();
-      getPullRequests();
-      startTimer();
+      state.user = result.username ? result.username : state.user;
+      state.auth = result.auth ? result.auth : state.auth;
+      state.token = result.token ? result.token : state.token;
+      state.prOptions = result.prTypes ? result.prTypes : state.prOptions;
+      state.followedRepos = result.followedRepos
+        ? result.followedRepos
+        : state.followedRepos;
+
+      let usernameNotKnown = setInterval(() => {
+        noUsername(usernameNotKnown);
+      });
     }
   );
 }
@@ -47,6 +50,15 @@ function startTimer() {
     checkForDiffrences();
     getPRFromFollowedRepos();
   }, 10000);
+}
+
+function noUsername(usernameNotKnown) {
+  if (state.user !== '') {
+    getPRFromFollowedRepos();
+    getPullRequests();
+    clearInterval(usernameNotKnown);
+    startTimer();
+  }
 }
 
 function addPRToList(prList, newPR) {

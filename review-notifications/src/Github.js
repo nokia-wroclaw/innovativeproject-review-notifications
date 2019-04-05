@@ -50,17 +50,14 @@ class Github extends Component {
             auth: result.auth ? result.auth : initialState.auth,
             token: result.token ? result.token : initialState.token,
             prOptions: result.prTypes ? result.prTypes : initialState.prTypes,
-            followedPR: result.followedPR
-              ? result.followedPR
-              : initialState.followedPR,
-            createdPR: result.createdPR,
-            assignedPR: result.assignedPR,
-            mentionedPR: result.mentionedPR,
-            reviewedPR: result.reviewedPR,
+            followedPR: result.followedPR ? result.followedPR : [],
+            createdPR: result.createdPR ? result.createdPR : [],
+            assignedPR: result.assignedPR ? result.assignedPR : [],
+            mentionedPR: result.mentionedPR ? result.mentionedPR : [],
+            reviewedPR: result.reviewedPR ? result.reviewedPR : [],
             hasData: true,
           },
           () => {
-            console.log(this.state);
             this.listOfPullRequests();
           }
         );
@@ -70,6 +67,7 @@ class Github extends Component {
 
   listOfPullRequests() {
     let list = [];
+    console.log(this.state);
     this.state.prOptions.forEach(option => {
       if (option.isChecked)
         switch (option.value) {
@@ -91,7 +89,6 @@ class Github extends Component {
             throw new Error('Value do not match any option.');
         }
     });
-    this.state.createdPR.map(pr => console.log(pr));
     return (
       <>
         <p>User related pull requests:</p>
@@ -111,30 +108,30 @@ class Github extends Component {
   }
 
   removeDuplicates(list) {
-    console.log(list);
     let setFromList = new Set();
     list.forEach(item => setFromList.add(item));
     return Array.from(setFromList);
   }
 
   listOfFollowedPullRequests() {
-    this.state.followedPR.map(pr => console.log(pr));
-    return (
-      <>
-        <p>Pull requests from followed repositories:</p>
-        <ul>
-          {this.state.followedPR.map(pr => (
-            <li key={pr.id}>
-              <a href={pr.link} target="_blank" rel="noopener noreferrer">
-                {pr.title}
-              </a>
-              <p>last update: {pr.updated}</p>
-              <p>comments: {this.listComments(pr)}</p>
-            </li>
-          ))}
-        </ul>
-      </>
-    );
+    if (this.state.followedPR !== []) {
+      return (
+        <>
+          <p>Pull requests from followed repositories:</p>
+          <ul>
+            {this.state.followedPR.map(pr => (
+              <li key={pr.id}>
+                <a href={pr.link} target="_blank" rel="noopener noreferrer">
+                  {pr.title}
+                </a>
+                <p>last update: {pr.updated}</p>
+                <p>comments: {this.listComments(pr)}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    } else return <p> You do not have any followed repositories.</p>;
   }
 
   listComments(prObject) {
@@ -144,21 +141,23 @@ class Github extends Component {
   }
 
   render() {
-    let communicate;
-    if (!this.state.hasData) {
-      communicate = <p>Loading...</p>;
-    } else if (this.state.token == '' || !this.state.auth) {
-      communicate = <p>Add token to display more pull requests</p>;
-    } else {
-      communicate = <p />;
-    }
-    return (
-      <div>
-        <p>{communicate}</p>
-        {this.listOfPullRequests()}
-        {this.listOfFollowedPullRequests()}
-      </div>
-    );
+    if (this.state.user !== '') {
+      let prompt;
+      if (!this.state.hasData) {
+        prompt = <p>Loading...</p>;
+      } else if (this.state.token === '' || !this.state.auth) {
+        prompt = <p>Add token to display more pull requests</p>;
+      } else {
+        prompt = <p />;
+      }
+      return (
+        <div>
+          <p>{prompt}</p>
+          {this.listOfPullRequests()}
+          {this.listOfFollowedPullRequests()}
+        </div>
+      );
+    } else return <div>Add your username in options</div>;
   }
 }
 
