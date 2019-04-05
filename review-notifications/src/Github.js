@@ -28,8 +28,6 @@ class Github extends Component {
 
   componentDidMount() {
     this.getDataFromChromeStorage();
-    // this.listOfPullRequests();
-    // this.listOfFollowedPullRequests();
   }
 
   getDataFromChromeStorage() {
@@ -62,7 +60,6 @@ class Github extends Component {
             hasData: true,
           },
           () => {
-            console.log(this.state);
             this.listOfPullRequests();
           }
         );
@@ -93,7 +90,6 @@ class Github extends Component {
             throw new Error('Value do not match any option.');
         }
     });
-    this.state.createdPR.map(pr => console.log(pr));
     return (
       <>
         <p>User related pull requests:</p>
@@ -113,14 +109,12 @@ class Github extends Component {
   }
 
   removeDuplicates(list) {
-    console.log(list);
     let setFromList = new Set();
     list.forEach(item => setFromList.add(item));
     return Array.from(setFromList);
   }
 
   listOfFollowedPullRequests() {
-    this.state.followedPR.map(pr => console.log(pr));
     return (
       <>
         <p>Pull requests from followed repositories:</p>
@@ -146,17 +140,17 @@ class Github extends Component {
   }
 
   render() {
-    let communicate;
+    let prompt;
     if (!this.state.hasData) {
-      communicate = <p>Loading...</p>;
-    } else if (this.state.token == '' || !this.state.auth) {
-      communicate = <p>Add token to display more pull requests</p>;
+      prompt = <p>Loading...</p>;
+    } else if (this.state.token === '' || !this.state.auth) {
+      prompt = <p>Add token to display more pull requests</p>;
     } else {
-      communicate = <p />;
+      prompt = <p />;
     }
     return (
       <div>
-        <p>{communicate}</p>
+        <p>{prompt}</p>
         {this.listOfPullRequests()}
         {this.listOfFollowedPullRequests()}
       </div>
