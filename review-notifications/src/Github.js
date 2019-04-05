@@ -44,6 +44,9 @@ class Github extends Component {
               ? result.followedRepos
               : initialState.followedRepos,
           },
+          // chrome.runtime.sendMessage({ message: 'hi' }, response => {
+          //   console.log(response.message);
+          // }),
           () => {
             this.getPRFromFollowedRepos();
             this.getPullRequests();
@@ -74,7 +77,7 @@ class Github extends Component {
       link: newPR.link,
       title: newPR.title,
       updated: newPR.updated,
-      comments: newPR.comments,
+      comments: newPR.comments_data,
     });
   }
 
@@ -125,7 +128,7 @@ class Github extends Component {
     try {
       const mentionedUsers = await this.findMentioned(prObject.comments_url);
       const comments = await this.extractComments(prObject);
-      console.log(comments);
+      // console.log(comments);
       return {
         link: prObject.html_url,
         id: prObject.id,
@@ -262,6 +265,13 @@ class Github extends Component {
     }
   }
 
+  removeDuplicates(list) {
+    console.log(list);
+    let setFromList = new Set();
+    list.forEach(item => setFromList.add(item));
+    return Array.from(setFromList);
+  }
+
   listOfPullRequests() {
     let list = [];
     this.state.prOptions.forEach(option => {
@@ -289,7 +299,7 @@ class Github extends Component {
       <>
         <p>User related pull requests:</p>
         <ul>
-          {[...new Set(list)].map(pr => (
+          {this.removeDuplicates(list).map(pr => (
             <li key={pr.id}>
               <a href={pr.link} target="_blank" rel="noopener noreferrer">
                 {pr.title}
@@ -304,13 +314,8 @@ class Github extends Component {
   }
 
   listComments(prObject) {
-    // console.log(prObject.comments_data);
-    // console.log(prObject.mentionedUsers);
-    if (
-      prObject.comments_data !== undefined &&
-      prObject.comments_data.length > 0
-    ) {
-      return prObject.comments_data[0].body;
+    if (prObject.comments.data.length > 0) {
+      return prObject.comments.data[0].body;
     } else return 'There is no comments';
   }
 
