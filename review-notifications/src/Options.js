@@ -71,6 +71,9 @@ class Options extends Component {
       token: this.state.token,
       prTypes: this.state.prTypes,
     });
+    chrome.runtime.sendMessage({
+      message: 'Changed options',
+    });
   }
 
   handleInputChange(event) {
@@ -126,8 +129,12 @@ class Options extends Component {
           link: this.state.newRepo,
           prLink: response.data.pulls_url.replace('{/number}', ''),
         });
-        this.setState({ followedRepos: newRepos, newRepo: '' });
-        chrome.storage.local.set({ followedRepos: this.state.followedRepos });
+        this.setState({ followedRepos: newRepos, newRepo: '' }, () => {
+          chrome.storage.local.set({ followedRepos: this.state.followedRepos });
+          chrome.runtime.sendMessage({
+            message: 'Changed followed repositories',
+          });
+        });
       })
       .catch(error => {
         console.log(error);
@@ -152,6 +159,7 @@ class Options extends Component {
             <input
               type="checkbox"
               value={this.state.auth}
+              checked={this.state.auth}
               onChange={e => this.handleChange('auth', e)}
               name="ifAuthToken"
             />

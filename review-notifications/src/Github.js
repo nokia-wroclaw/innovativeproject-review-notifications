@@ -3,6 +3,14 @@
 import React, { Component } from 'react';
 import { initialState } from './Options';
 
+const options = {
+  CREATED: 'Created',
+  ASSIGNED: 'Assigned',
+  MENTIONED: 'Mentioned',
+  REVIEW: 'Review request',
+  FOLLOWED: 'From followed repositories',
+};
+
 class Github extends Component {
   constructor(props) {
     super(props);
@@ -67,54 +75,60 @@ class Github extends Component {
 
   listOfPullRequests() {
     let list = [];
-    console.log(this.state);
     this.state.prOptions.forEach(option => {
       if (option.isChecked)
         switch (option.value) {
-          case 'Created':
+          case options.CREATED:
             list.push(...this.state.createdPR);
             break;
-          case 'Assigned':
+          case options.ASSIGNED:
             list.push(...this.state.assignedPR);
             break;
-          case 'Mentioned':
+          case options.MENTIONED:
             list.push(...this.state.mentionedPR);
             break;
-          case 'Review request':
+          case options.REVIEW:
             list.push(...this.state.reviewedPR);
             break;
-          case 'From followed repositories':
+          case options.FOLLOWED:
             break;
           default:
             throw new Error('Value do not match any option.');
         }
     });
-    return (
-      <>
-        <p>User related pull requests:</p>
-        <ul>
-          {this.removeDuplicates(list).map(pr => (
-            <li key={pr.id}>
-              <a href={pr.link} target="_blank" rel="noopener noreferrer">
-                {pr.title}
-              </a>
-              <p>last update: {pr.updated}</p>
-              <p> {this.listComments(pr)} </p>
-            </li>
-          ))}
-        </ul>
-      </>
-    );
+    if (list.length > 0) {
+      return (
+        <>
+          <p>User related pull requests:</p>
+          <ul>
+            {this.removeDuplicates(list).map(pr => (
+              <li key={pr.id}>
+                <a href={pr.link} target="_blank" rel="noopener noreferrer">
+                  {pr.title}
+                </a>
+                <p>last update: {pr.updated}</p>
+                <p> {this.listComments(pr)} </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    }
   }
 
   removeDuplicates(list) {
-    let setFromList = new Set();
-    list.forEach(item => setFromList.add(item));
+    const setFromList = new Set();
+    list.forEach(setFromList.add);
     return Array.from(setFromList);
   }
 
   listOfFollowedPullRequests() {
-    if (this.state.followedPR !== []) {
+    if (
+      this.state.followedPR.length > 0 &&
+      this.state.prOptions.find(
+        option => option.value === options.FOLLOWED && option.isChecked === true
+      )
+    ) {
       return (
         <>
           <p>Pull requests from followed repositories:</p>
@@ -131,7 +145,13 @@ class Github extends Component {
           </ul>
         </>
       );
-    } else return <p> You do not have any followed repositories.</p>;
+    } else
+      return (
+        <p>
+          You do not have any followed repositories or option to display them is
+          not checked.
+        </p>
+      );
   }
 
   listComments(prObject) {
@@ -141,23 +161,21 @@ class Github extends Component {
   }
 
   render() {
-    if (this.state.user !== '') {
-      let prompt;
-      if (!this.state.hasData) {
-        prompt = <p>Loading...</p>;
-      } else if (this.state.token === '' || !this.state.auth) {
-        prompt = <p>Add token to display more pull requests</p>;
-      } else {
-        prompt = <p />;
-      }
-      return (
-        <div>
-          <p>{prompt}</p>
-          {this.listOfPullRequests()}
-          {this.listOfFollowedPullRequests()}
-        </div>
-      );
-    } else return <div>Add your username in options</div>;
+    let prompt = <p />;
+    if (!this.state.hasData) {
+      prompt = <p>Loading...</p>;
+    } else if (this.state.user === '') {
+      prompt = <p>Add your username to display more pull requests</p>;
+    } else if (this.state.token === '' || !this.state.auth) {
+      prompt = <p>Add token to display more pull requests</p>;
+    }
+    return (
+      <div>
+        {prompt}
+        {this.listOfPullRequests()}
+        {this.listOfFollowedPullRequests()}
+      </div>
+    );
   }
 }
 

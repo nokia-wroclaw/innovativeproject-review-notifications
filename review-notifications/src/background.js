@@ -2,9 +2,13 @@
 
 var axios = require('axios');
 
-chrome.runtime.onInstalled.addListener(function() {
-  onStart();
-});
+const options = {
+  CREATED: 'Created',
+  ASSIGNED: 'Assigned',
+  MENTIONED: 'Mentioned',
+  REVIEW: 'Review request',
+  FOLLOWED: 'From followed repositories',
+};
 
 let state = {
   haveData: false,
@@ -26,6 +30,36 @@ let state = {
   followedPR: [],
 };
 
+chrome.runtime.onInstalled.addListener(function() {
+  onStart();
+});
+
+chrome.runtime.onMessage.addListener(request => {
+  if (request.message === 'Changed followed repositories') {
+    chrome.storage.local.get(['followedRepos'], function(result) {
+      state.followedRepos = result.followedRepos
+        ? result.followedRepos
+        : state.followedRepos;
+      getPRFromFollowedRepos();
+    });
+  }
+});
+
+chrome.runtime.onMessage.addListener(request => {
+  if (request.message === 'Changed options') {
+    chrome.storage.local.get(['username', 'auth', 'token', 'prTypes'], function(
+      result
+    ) {
+      state.user = result.username ? result.username : state.user;
+      state.auth = result.auth ? result.auth : state.auth;
+      state.token = result.token ? result.token : state.token;
+      state.prOptions = result.prTypes ? result.prTypes : state.prOptions;
+    });
+    getPullRequests();
+    updateStateInStorage();
+  }
+});
+
 function onStart() {
   chrome.storage.local.get(
     ['username', 'auth', 'token', 'prTypes', 'followedRepos'],
@@ -38,27 +72,16 @@ function onStart() {
         ? result.followedRepos
         : state.followedRepos;
 
-      let usernameNotKnown = setInterval(() => {
-        noUsername(usernameNotKnown);
-      });
+      startTimer();
     }
   );
 }
 
 function startTimer() {
   setInterval(() => {
+    getPRFromFollowedRepos();
     checkForDiffrences();
-    getPRFromFollowedRepos();
   }, 10000);
-}
-
-function noUsername(usernameNotKnown) {
-  if (state.user !== '') {
-    getPRFromFollowedRepos();
-    getPullRequests();
-    clearInterval(usernameNotKnown);
-    startTimer();
-  }
 }
 
 function addPRToList(prList, newPR) {
@@ -162,22 +185,22 @@ function checkForDiffrences() {
   chrome.storage.local.get(
     ['createdPR'],
     function(result) {
-      if (typeof state !== 'undefined' && result.createdPR.length > 0)
+      if (state !== undefined && result.createdPR.length > 0)
         state.createdPR.map(currCreatedPR => {
           const pr = result.createdPR.filter(
-            resPr => resPr.link == currCreatedPR.link
+            resPr => resPr.link === currCreatedPR.link
           );
-          if (currCreatedPR.updated != pr[0].updated)
+          if (currCreatedPR.updated !== pr[0].updated)
             findChanges(currCreatedPR, pr[0]);
         });
     }.bind(this)
   );
-  rememberState();
+  updateStateInStorage();
   getPullRequests();
 }
 
 function findChanges(newPR) {
-  var opt = {
+  const opt = {
     type: 'basic',
     title: 'Notification',
     message: `${newPR.title} has changed!`,
@@ -188,26 +211,33 @@ function findChanges(newPR) {
 }
 
 async function getPullRequests() {
-  let query = `https://api.github.com/users/${state.user}/repos`;
+  let query = '';
+  if (state.user !== '')
+    query = `https://api.github.com/users/${state.user}/repos`;
   if (state.token !== '' && state.auth) {
     query = `https://api.github.com/user/repos?access_token=${state.token}`;
   }
-  let prLinksList = [];
-  try {
-    const response = await axios.get(query);
-    prLinksList = response.data.map(repo =>
-      repo.pulls_url.replace('{/number}', '')
-    );
-  } catch (error) {
-    console.log(error);
+  if (query) {
+    let prLinksList = [];
+    try {
+      const response = await axios.get(query);
+      prLinksList = response.data.map(repo =>
+        repo.pulls_url.replace('{/number}', '')
+      );
+    } catch (error) {
+      console.log(error);
+    }
+    try {
+      const prData = await extractPullRequests(prLinksList);
+      filterPullRequests(prData);
+      state.haveData = true;
+    } catch (error) {
+      console.log(error);
+    }
   }
-
-  const prData = await extractPullRequests(prLinksList);
-  filterPullRequests(prData);
-  state.haveData = true;
 }
 
-function rememberState() {
+function updateStateInStorage() {
   chrome.storage.local.set({
     createdPR: state.createdPR,
     assignedPR: state.assignedPR,
@@ -230,8 +260,7 @@ async function extractComments(prObject) {
 
 async function getPRFromFollowedRepos() {
   const fromFollowedRepoOpt = state.prOptions.find(
-    option =>
-      option.value === 'From followed repositories' && option.isChecked === true
+    option => option.value === options.FOLLOWED && option.isChecked === true
   );
   if (fromFollowedRepoOpt) {
     try {
