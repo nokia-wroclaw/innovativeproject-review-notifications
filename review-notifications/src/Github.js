@@ -1,14 +1,21 @@
 /*global chrome*/
 
 import React, { Component } from 'react';
-import axios from 'axios';
 import { initialState } from './Options';
+
+const options = {
+  CREATED: 'Created',
+  ASSIGNED: 'Assigned',
+  MENTIONED: 'Mentioned',
+  REVIEW: 'Review request',
+  FOLLOWED: 'From followed repositories',
+};
 
 class Github extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      haveData: false,
+      hasData: false,
       user: '',
       auth: false,
       token: '',
@@ -17,18 +24,33 @@ class Github extends Component {
         { id: 2, value: 'Assigned', isChecked: false },
         { id: 3, value: 'Mentioned', isChecked: false },
         { id: 4, value: 'Review request', isChecked: false },
+        { id: 5, value: 'From followed repositories', isChecked: false },
       ],
       createdPR: [],
       assignedPR: [],
       mentionedPR: [],
       reviewedPR: [],
+      followedPR: [],
     };
-    this.getPullRequests = this.getPullRequests.bind(this);
   }
 
   componentDidMount() {
+    this.getDataFromChromeStorage();
+  }
+
+  getDataFromChromeStorage() {
     chrome.storage.local.get(
-      ['username', 'auth', 'token', 'prTypes', 'reposLinks'],
+      [
+        'username',
+        'auth',
+        'token',
+        'prTypes',
+        'followedPR',
+        'createdPR',
+        'assignedPR',
+        'mentionedPR',
+        'reviewedPR',
+      ],
       function(result) {
         this.setState(
           {
@@ -36,187 +58,122 @@ class Github extends Component {
             auth: result.auth ? result.auth : initialState.auth,
             token: result.token ? result.token : initialState.token,
             prOptions: result.prTypes ? result.prTypes : initialState.prTypes,
+            followedPR: result.followedPR ? result.followedPR : [],
+            createdPR: result.createdPR ? result.createdPR : [],
+            assignedPR: result.assignedPR ? result.assignedPR : [],
+            mentionedPR: result.mentionedPR ? result.mentionedPR : [],
+            reviewedPR: result.reviewedPR ? result.reviewedPR : [],
+            hasData: true,
           },
           () => {
-            this.getPullRequests();
-            this.startTimer();
+            this.listOfPullRequests();
           }
         );
       }.bind(this)
     );
   }
 
-  componentWillUnmount() {
-    clearInterval(this.timer);
-  }
-
-  startTimer() {
-    this.timer = setInterval(() => this.getPullRequests(), 60000);
-  }
-
-  addPRToList(prList, newPR) {
-    prList.push({
-      link: newPR.link,
-      title: newPR.title,
-      updated: newPR.updated,
-    });
-  }
-
-  async findMentioned(commentsUrl) {
-    try {
-      const response = await axios.get(
-        `${commentsUrl}?access_token=${this.state.token}`
-      );
-      const mentionedLists = response.data.map(comment =>
-        comment.body.match(/@[a-zA-Z]*/g)
-      );
-      const mentionedUsers = [];
-      mentionedLists.forEach(list =>
-        mentionedUsers.push(
-          ...(list !== null ? list.map(user => user.replace('@', '')) : [])
-        )
-      );
-      return [].concat.apply([], mentionedUsers);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  async extractDataFromPR(prObject) {
-    try {
-      const mentionedUsers = await this.findMentioned(prObject.comments_url);
-      return {
-        link: prObject.html_url,
-        id: prObject.id,
-        title: prObject.title,
-        updated: prObject.updated_at,
-        creator: prObject.user.login,
-        assignees: prObject.assignees.map(assigner => assigner.login),
-        reviewers: prObject.requested_reviewers.map(rev => rev.login),
-        mentioned: mentionedUsers ? mentionedUsers : [],
-      };
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  filterPullRequests(prData) {
-    const createdPR = [];
-    const assignedPR = [];
-    const mentionedPR = [];
-    const reviewedPR = [];
-    [].concat.apply([], prData).forEach(prObject => {
-      if (prObject.creator === this.state.user) {
-        this.addPRToList(createdPR, prObject);
-      }
-      prObject.assignees.forEach(assigner => {
-        if (assigner === this.state.user)
-          this.addPRToList(assignedPR, prObject);
-      });
-      prObject.mentioned.forEach(mentionedUser => {
-        if (mentionedUser === this.state.user)
-          this.addPRToList(mentionedPR, prObject);
-      });
-      prObject.reviewers.forEach(reviewer => {
-        if (reviewer === this.state.user)
-          this.addPRToList(reviewedPR, prObject);
-      });
-    });
-    this.setState({
-      createdPR: createdPR,
-      assignedPR: assignedPR,
-      mentionedPR: mentionedPR,
-      reviewedPR: reviewedPR,
-    });
-  }
-
-  async getPullRequests() {
-    let query = `https://api.github.com/users/${this.state.user}/repos`;
-    if (this.state.token !== '' && this.state.auth) {
-      query = `https://api.github.com/user/repos?access_token=${
-        this.state.token
-      }`;
-    }
-    let prLinksList = [];
-    try {
-      const response = await axios.get(query);
-      prLinksList = response.data.map(repo =>
-        repo.pulls_url.replace('{/number}', '')
-      );
-    } catch (error) {
-      console.log(error);
-    }
-    try {
-      const pullRequests = await axios.all(
-        prLinksList.map(prLink =>
-          axios.get(`${prLink}?access_token=${this.state.token}`)
-        )
-      );
-      const prData = await Promise.all(
-        pullRequests.map(
-          async prList =>
-            await Promise.all(
-              prList.data.map(
-                async pullRequest => await this.extractDataFromPR(pullRequest)
-              )
-            )
-        )
-      );
-      this.filterPullRequests(prData);
-      this.setState({ haveData: true });
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  listOfPullRequest() {
+  listOfPullRequests() {
     let list = [];
     this.state.prOptions.forEach(option => {
       if (option.isChecked)
         switch (option.value) {
-          case 'Created':
+          case options.CREATED:
             list.push(...this.state.createdPR);
             break;
-          case 'Assigned':
+          case options.ASSIGNED:
             list.push(...this.state.assignedPR);
             break;
-          case 'Mentioned':
+          case options.MENTIONED:
             list.push(...this.state.mentionedPR);
             break;
-          case 'Review request':
+          case options.REVIEW:
             list.push(...this.state.reviewedPR);
+            break;
+          case options.FOLLOWED:
             break;
           default:
             throw new Error('Value do not match any option.');
         }
     });
-    return (
-      <ul>
-        {[...new Set(list)].map(pr => (
-          <li key={pr.id}>
-            <a href={pr.link} target="_blank" rel="noopener noreferrer">
-              {pr.title}
-            </a>
-            <p>last update: {pr.updated}</p>
-          </li>
-        ))}
-      </ul>
-    );
+    if (list.length > 0) {
+      return (
+        <>
+          <p>User related pull requests:</p>
+          <ul>
+            {this.removeDuplicates(list).map(pr => (
+              <li key={pr.id}>
+                <a href={pr.link} target="_blank" rel="noopener noreferrer">
+                  {pr.title}
+                </a>
+                <p>last update: {pr.updated}</p>
+                <p> {this.listComments(pr)} </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    }
+  }
+
+  removeDuplicates(list) {
+    const setFromList = new Set();
+    list.forEach(setFromList.add);
+    return Array.from(setFromList);
+  }
+
+  listOfFollowedPullRequests() {
+    if (
+      this.state.followedPR.length > 0 &&
+      this.state.prOptions.find(
+        option => option.value === options.FOLLOWED && option.isChecked === true
+      )
+    ) {
+      return (
+        <>
+          <p>Pull requests from followed repositories:</p>
+          <ul>
+            {this.state.followedPR.map(pr => (
+              <li key={pr.id}>
+                <a href={pr.link} target="_blank" rel="noopener noreferrer">
+                  {pr.title}
+                </a>
+                <p>last update: {pr.updated}</p>
+                <p>comments: {this.listComments(pr)}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    } else
+      return (
+        <p>
+          You do not have any followed repositories or option to display them is
+          not checked.
+        </p>
+      );
+  }
+
+  listComments(prObject) {
+    if (prObject.commentsData.data.length > 0) {
+      return prObject.commentsData.data[0].body;
+    } else return 'There is no comments';
   }
 
   render() {
-    let communicate;
-    if (!this.state.haveData) {
-      communicate = <p>Loading...</p>;
-    } else if (this.state.token == '' || !this.state.auth) {
-      communicate = <p>Add token to display more pull requests</p>;
-    } else {
-      communicate = <p />;
+    let prompt = <p />;
+    if (!this.state.hasData) {
+      prompt = <p>Loading...</p>;
+    } else if (this.state.user === '') {
+      prompt = <p>Add your username to display more pull requests</p>;
+    } else if (this.state.token === '' || !this.state.auth) {
+      prompt = <p>Add token to display more pull requests</p>;
     }
     return (
       <div>
-        <p>{communicate}</p>
-        {this.listOfPullRequest()}
+        {prompt}
+        {this.listOfPullRequests()}
+        {this.listOfFollowedPullRequests()}
       </div>
     );
   }

@@ -9,13 +9,14 @@ export const initialState = {
   auth: false,
   token: '',
   newRepo: '',
-  reposLinks: [],
   prTypes: [
     { id: 1, value: 'Created', isChecked: false },
     { id: 2, value: 'Assigned', isChecked: false },
     { id: 3, value: 'Mentioned', isChecked: false },
     { id: 4, value: 'Review request', isChecked: false },
+    { id: 5, value: 'From followed repositories', isChecked: false },
   ],
+  followedRepos: [],
 };
 
 class Options extends Component {
@@ -26,7 +27,7 @@ class Options extends Component {
       auth: false,
       token: '',
       newRepo: '',
-      reposLinks: [],
+      followedRepos: [],
       prTypes: [],
     };
     this.handleChange = this.handleChange.bind(this);
@@ -38,16 +39,16 @@ class Options extends Component {
 
   componentDidMount() {
     chrome.storage.local.get(
-      ['username', 'auth', 'token', 'prTypes', 'reposLinks'],
+      ['username', 'auth', 'token', 'prTypes', 'followedRepos'],
       function(result) {
         this.setState({
           user: result.username ? result.username : initialState.user,
           auth: result.auth ? result.auth : initialState.auth,
           token: result.token ? result.token : initialState.token,
           prTypes: result.prTypes ? result.prTypes : initialState.prTypes,
-          reposLinks: result.reposLinks
-            ? result.reposLinks
-            : initialState.reposLinks,
+          followedRepos: result.followedRepos
+            ? result.followedRepos
+            : initialState.followedRepos,
         });
       }.bind(this)
     );
@@ -69,6 +70,9 @@ class Options extends Component {
       auth: this.state.auth,
       token: this.state.token,
       prTypes: this.state.prTypes,
+    });
+    chrome.runtime.sendMessage({
+      message: 'Changed options',
     });
   }
 
@@ -98,7 +102,7 @@ class Options extends Component {
   }
 
   displayRepositories() {
-    return this.state.reposLinks.map(item => (
+    return this.state.followedRepos.map(item => (
       <li key={item.link}>
         <a href={item.link}>{item.name}</a>
       </li>
@@ -115,17 +119,22 @@ class Options extends Component {
       'github.com',
       'api.github.com/repos'
     );
-    let newReposLinks = this.state.reposLinks;
+    let newRepos = this.state.followedRepos;
 
     axios
       .get(apiLink)
       .then(response => {
-        newReposLinks.push({
+        newRepos.push({
           name: response.data.full_name,
           link: this.state.newRepo,
+          prLink: response.data.pulls_url.replace('{/number}', ''),
         });
-        this.setState({ reposLinks: newReposLinks, newRepo: '' });
-        chrome.storage.local.set({ reposLinks: this.state.reposLinks });
+        this.setState({ followedRepos: newRepos, newRepo: '' }, () => {
+          chrome.storage.local.set({ followedRepos: this.state.followedRepos });
+          chrome.runtime.sendMessage({
+            message: 'Changed followed repositories',
+          });
+        });
       })
       .catch(error => {
         console.log(error);
@@ -150,6 +159,7 @@ class Options extends Component {
             <input
               type="checkbox"
               value={this.state.auth}
+              checked={this.state.auth}
               onChange={e => this.handleChange('auth', e)}
               name="ifAuthToken"
             />
@@ -170,7 +180,7 @@ class Options extends Component {
           <br />
           Choose type of PR you`d like to follow:
           <div>{this.checkboxList()}</div>
-          <input type="submit" value="Submit" />
+          <input type="submit" value="Save" />
         </form>
         <br />
         Add repositories you`d like to follow:
