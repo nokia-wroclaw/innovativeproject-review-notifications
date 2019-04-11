@@ -289,7 +289,7 @@ class Options extends Component {
                       type="password"
                       className={classes.textField}
                       value={this.state.token}
-                      onChange={e => this.handleChange('user', e)}
+                      onChange={e => this.handleChange('token', e)}
                       margin="normal"
                       variant="outlined"
                     />

@@ -118,7 +118,7 @@ class Github extends Component {
 
   removeDuplicates(list) {
     const setFromList = new Set();
-    list.forEach(setFromList.add);
+    list.forEach(item => setFromList.add(item));
     return Array.from(setFromList);
   }
 
@@ -155,9 +155,15 @@ class Github extends Component {
   }
 
   listComments(prObject) {
-    if (prObject.commentsData.data.length > 0) {
-      return prObject.commentsData.data[0].body;
-    } else return 'There is no comments';
+    console.log(prObject);
+    if (prObject.commentsData.length > 0) {
+      // const commDataLen = prObject.commentsData.length;
+      const length = prObject.commentsData.length;
+      if (length > 0) {
+        return prObject.commentsData[length - 1].body;
+      }
+    }
+    return 'There are no comments';
   }
 
   render() {

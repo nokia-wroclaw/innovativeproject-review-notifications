@@ -139,7 +139,11 @@ async function findMentioned(commentsUrl) {
 async function extractDataFromPR(prObject) {
   try {
     const mentionedUsers = await findMentioned(prObject.comments_url);
-    const comments = await extractComments(prObject);
+    const reviewComments = await extractComments(prObject.review_comments_url);
+    const prComments = await extractComments(prObject.comments_url);
+    const comments1 = [].concat.apply([], prComments.data);
+    const comments2 = [].concat.apply([], reviewComments.data);
+    const comments = comments1.concat(comments2);
     return {
       link: prObject.html_url,
       id: prObject.id,
@@ -183,31 +187,64 @@ function filterPullRequests(prData) {
 
 function checkForDiffrences() {
   chrome.storage.local.get(
-    ['createdPR'],
+    ['createdPR', 'assignedPR', 'mentionedPR', 'reviewedPR'],
     function(result) {
-      if (state !== undefined && result.createdPR.length > 0)
-        state.createdPR.map(currCreatedPR => {
-          const pr = result.createdPR.filter(
-            resPr => resPr.link === currCreatedPR.link
-          );
-          if (currCreatedPR.updated !== pr[0].updated)
-            findChanges(currCreatedPR, pr[0]);
-        });
+      checkDataFromChromeStorage(result.createdPR, 'createdPR');
+      checkDataFromChromeStorage(result.assignedPR, 'assignedPR');
+      checkDataFromChromeStorage(result.mentionedPR, 'mentionedPR');
+      checkDataFromChromeStorage(result.reviewedPR, 'reviewedPR');
     }.bind(this)
   );
   updateStateInStorage();
   getPullRequests();
 }
 
-function findChanges(newPR) {
+function checkDataFromChromeStorage(listOfPRs, stateName) {
+  if (listOfPRs.length > 0)
+    state[stateName].map(currPR => {
+      const pr = listOfPRs.find(resPr => resPr.link === currPR.link);
+      if (pr && currPR.updated !== pr.updated)
+        checkForNewComments(currPR, pr.updated);
+      else if (!pr)
+        //nowy pr
+        sendNotification(
+          'New pull request!',
+          `There is a new pull request named ${currPR.title}`,
+          currPR.link, //link jako id powiadomienia
+          currPR.link
+        );
+    });
+}
+
+function checkForNewComments(newPR, oldPRLastUpdate) {
+  newPR.commentsData.forEach(commentInfo => {
+    if (commentInfo.updated_at > oldPRLastUpdate) {
+      const message = `${commentInfo.user.login} wrote: ${commentInfo.body}`;
+      sendNotification(
+        `${newPR.title} has changed!`,
+        message,
+        commentInfo.id,
+        commentInfo.html_url
+      );
+    }
+  });
+}
+
+function sendNotification(title, message, id, htmlUrl) {
   const opt = {
     type: 'basic',
-    title: 'Notification',
-    message: `${newPR.title} has changed!`,
+    title: title,
+    message: message,
     iconUrl: 'git-icon.png',
   };
-
-  chrome.notifications.create(opt);
+  chrome.notifications.create(id.toString(), opt, function(id) {
+    setTimeout(function() {
+      chrome.notifications.clear(id.toString(), function() {});
+    }, 10000);
+  });
+  chrome.notifications.onClicked.addListener(function() {
+    chrome.tabs.create({ url: htmlUrl });
+  });
 }
 
 async function getPullRequests() {
@@ -247,12 +284,10 @@ function updateStateInStorage() {
   });
 }
 
-async function extractComments(prObject) {
+async function extractComments(url) {
   try {
-    let commentsList = await axios.get(
-      `${prObject.review_comments_url}?access_token=${state.token}`
-    );
-    return commentsList;
+    let prComments = await axios.get(`${url}?access_token=${state.token}`);
+    return prComments;
   } catch (error) {
     console.log(error);
   }
