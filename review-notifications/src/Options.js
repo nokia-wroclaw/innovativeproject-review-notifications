@@ -5,7 +5,9 @@ import axios from 'axios';
 import './App.css';
 
 import { withStyles } from '@material-ui/core/styles';
+import PropTypes from 'prop-types';
 import AddIcon from '@material-ui/icons/Add';
+import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
 import Checkbox from '@material-ui/core/Checkbox';
 import CloseIcon from '@material-ui/icons/Close';
@@ -23,11 +25,9 @@ import ListItemText from '@material-ui/core/ListItemText';
 import Paper from '@material-ui/core/Paper';
 import Snackbar from '@material-ui/core/Snackbar';
 import TextField from '@material-ui/core/TextField';
-import AppBar from '@material-ui/core/AppBar';
 import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import Typography from '@material-ui/core/Typography';
-import PropTypes from 'prop-types';
 
 function TabContainer(props) {
   return (
@@ -240,10 +240,11 @@ class Options extends Component {
     let newRepos = this.state.followedRepos.filter(
       repo => repo.link !== item.link
     );
-    this.setState({ followedRepos: newRepos });
-    chrome.storage.local.set({ followedRepos: this.state.followedRepos });
-    chrome.runtime.sendMessage({
-      message: 'Changed followed repositories',
+    this.setState({ followedRepos: newRepos }, () => {
+      chrome.storage.local.set({ followedRepos: this.state.followedRepos });
+      chrome.runtime.sendMessage({
+        message: 'Changed followed repositories',
+      });
     });
   }
 
@@ -350,7 +351,6 @@ class Options extends Component {
                       type="submit"
                       color="inherit"
                       aria-label="Add"
-                      color="action"
                     >
                       <AddIcon />
                     </IconButton>
