@@ -31,6 +31,9 @@ let state = {
 };
 
 chrome.runtime.onInstalled.addListener(function() {
+  chrome.notifications.onClicked.addListener(function(htmlUrl) {
+    chrome.tabs.create({ url: htmlUrl });
+  });
   onStart();
 });
 
@@ -78,10 +81,11 @@ function onStart() {
 }
 
 function startTimer() {
-  setInterval(() => {
+  setTimeout(async function run() {
     getPRFromFollowedRepos();
-    checkForDiffrences();
-  }, 10000);
+    await checkForDiffrences();
+    setTimeout(run, 6000);
+  }, 6000);
 }
 
 function addPRToList(prList, newPR) {
@@ -90,6 +94,7 @@ function addPRToList(prList, newPR) {
     title: newPR.title,
     updated: newPR.updated,
     commentsData: newPR.commentsData,
+    requested_reviewers: newPR.requested_reviewers,
   });
 }
 
@@ -141,8 +146,8 @@ async function extractDataFromPR(prObject) {
     const mentionedUsers = await findMentioned(prObject.comments_url);
     const reviewComments = await extractComments(prObject.review_comments_url);
     const prComments = await extractComments(prObject.comments_url);
-    const comments1 = [].concat.apply([], prComments.data);
-    const comments2 = [].concat.apply([], reviewComments.data);
+    const comments1 = [].concat.apply([], reviewComments.data);
+    const comments2 = [].concat.apply([], prComments.data);
     const comments = comments1.concat(comments2);
     return {
       link: prObject.html_url,
@@ -154,6 +159,7 @@ async function extractDataFromPR(prObject) {
       reviewers: prObject.requested_reviewers.map(rev => rev.login),
       mentioned: mentionedUsers ? mentionedUsers : [],
       commentsData: comments ? comments : [],
+      requested_reviewers: prObject.requested_reviewers,
     };
   } catch (error) {
     console.log(error);
@@ -185,20 +191,19 @@ function filterPullRequests(prData) {
   state.reviewedPR = reviewedPR;
 }
 
-function checkForDiffrences() {
+async function checkForDiffrences() {
+  await getPullRequests();
   chrome.storage.local.get(
-    ['createdPR', 'assignedPR', 'mentionedPR', 'reviewedPR'],
+    ['createdPR', 'assignedPR', 'mentionedPR', 'reviewedPR', 'followedPR'],
     function(result) {
       checkDataFromChromeStorage(result.createdPR, 'createdPR');
       checkDataFromChromeStorage(result.assignedPR, 'assignedPR');
       checkDataFromChromeStorage(result.mentionedPR, 'mentionedPR');
       checkDataFromChromeStorage(result.reviewedPR, 'reviewedPR');
+      updateStateInStorage();
     }.bind(this)
   );
-  updateStateInStorage();
-  getPullRequests();
 }
-
 function checkDataFromChromeStorage(listOfPRs, stateName) {
   if (listOfPRs.length > 0)
     state[stateName].map(currPR => {
@@ -206,12 +211,26 @@ function checkDataFromChromeStorage(listOfPRs, stateName) {
       if (pr && currPR.updated !== pr.updated)
         checkForNewComments(currPR, pr.updated);
       else if (!pr)
-        //nowy pr
+        //new pr
         sendNotification(
           'New pull request!',
-          `There is a new pull request named ${currPR.title}`,
-          currPR.link, //link jako id powiadomienia
-          currPR.link
+          `There is a new pull request named ${currPR.title}.`,
+          currPR.link //link as notification id
+        );
+      let wasRequestedBefore = false;
+      if (pr) {
+        wasRequestedBefore = pr.requested_reviewers.find(
+          reviewer => reviewer.login === state.user
+        );
+      }
+      const isRequestedNow = currPR.requested_reviewers.find(
+        reviewer => reviewer.login === state.user
+      );
+      if (!wasRequestedBefore && isRequestedNow)
+        sendNotification(
+          'New review request!',
+          `You are requested to review a pull request ${currPR.title}.`,
+          currPR.link //link as notification id
         );
     });
 }
@@ -223,14 +242,13 @@ function checkForNewComments(newPR, oldPRLastUpdate) {
       sendNotification(
         `${newPR.title} has changed!`,
         message,
-        commentInfo.id,
         commentInfo.html_url
       );
     }
   });
 }
 
-function sendNotification(title, message, id, htmlUrl) {
+function sendNotification(title, message, id) {
   const opt = {
     type: 'basic',
     title: title,
@@ -241,9 +259,6 @@ function sendNotification(title, message, id, htmlUrl) {
     setTimeout(function() {
       chrome.notifications.clear(id.toString(), function() {});
     }, 10000);
-  });
-  chrome.notifications.onClicked.addListener(function() {
-    chrome.tabs.create({ url: htmlUrl });
   });
 }
 
