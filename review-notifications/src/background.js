@@ -149,6 +149,9 @@ async function extractDataFromPR(prObject) {
     const comments1 = [].concat.apply([], reviewComments.data);
     const comments2 = [].concat.apply([], prComments.data);
     const comments = comments1.concat(comments2);
+    comments.sort(function(a, b) {
+      return new Date(a.updated_at) - new Date(b.updated_at);
+    });
     return {
       link: prObject.html_url,
       id: prObject.id,

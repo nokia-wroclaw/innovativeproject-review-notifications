@@ -209,9 +209,17 @@ class Github extends Component {
   }
 
   removeDuplicates(list) {
-    const setFromList = new Set();
-    list.forEach(item => setFromList.add(item));
-    return Array.from(setFromList);
+    const setOfLinks = new Set();
+    list.forEach(item => setOfLinks.add(item.link));
+    const listWithoutDuplicates = [];
+    list.forEach(item => {
+      console.log(item.link);
+      if (setOfLinks.has(item.link)) {
+        setOfLinks.delete(item.link);
+        listWithoutDuplicates.push(item);
+      }
+    });
+    return listWithoutDuplicates;
   }
 
   listOfFollowedPullRequests(itemsNum) {
