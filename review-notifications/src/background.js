@@ -83,7 +83,7 @@ function onStart() {
 function startTimer() {
   setTimeout(async function run() {
     getPRFromFollowedRepos();
-    await checkForDiffrences();
+    await checkForDifferences();
     setTimeout(run, 6000);
   }, 6000);
 }
@@ -94,7 +94,7 @@ function addPRToList(prList, newPR) {
     title: newPR.title,
     updated: newPR.updated,
     commentsData: newPR.commentsData,
-    requested_reviewers: newPR.requested_reviewers,
+    requestedReviewers: newPR.requestedReviewers,
   });
 }
 
@@ -146,9 +146,7 @@ async function extractDataFromPR(prObject) {
     const mentionedUsers = await findMentioned(prObject.comments_url);
     const reviewComments = await extractComments(prObject.review_comments_url);
     const prComments = await extractComments(prObject.comments_url);
-    const comments1 = [].concat.apply([], reviewComments.data);
-    const comments2 = [].concat.apply([], prComments.data);
-    const comments = comments1.concat(comments2);
+    const comments = [...reviewComments.data.flat(), ...prComments.data.flat()];
     comments.sort(function(a, b) {
       return new Date(a.updated_at) - new Date(b.updated_at);
     });
@@ -162,7 +160,7 @@ async function extractDataFromPR(prObject) {
       reviewers: prObject.requested_reviewers.map(rev => rev.login),
       mentioned: mentionedUsers ? mentionedUsers : [],
       commentsData: comments ? comments : [],
-      requested_reviewers: prObject.requested_reviewers,
+      requestedReviewers: prObject.requested_reviewers,
     };
   } catch (error) {
     console.log(error);
@@ -194,7 +192,7 @@ function filterPullRequests(prData) {
   state.reviewedPR = reviewedPR;
 }
 
-async function checkForDiffrences() {
+async function checkForDifferences() {
   await getPullRequests();
   chrome.storage.local.get(
     ['createdPR', 'assignedPR', 'mentionedPR', 'reviewedPR', 'followedPR'],
@@ -221,12 +219,13 @@ function checkDataFromChromeStorage(listOfPRs, stateName) {
           currPR.link //link as notification id
         );
       let wasRequestedBefore = false;
+      console.log(pr);
       if (pr) {
-        wasRequestedBefore = pr.requested_reviewers.find(
+        wasRequestedBefore = pr.requestedReviewers.find(
           reviewer => reviewer.login === state.user
         );
       }
-      const isRequestedNow = currPR.requested_reviewers.find(
+      const isRequestedNow = currPR.requestedReviewers.find(
         reviewer => reviewer.login === state.user
       );
       if (!wasRequestedBefore && isRequestedNow)
@@ -304,8 +303,7 @@ function updateStateInStorage() {
 
 async function extractComments(url) {
   try {
-    let prComments = await axios.get(`${url}?access_token=${state.token}`);
-    return prComments;
+    return await axios.get(`${url}?access_token=${state.token}`);
   } catch (error) {
     console.log(error);
   }

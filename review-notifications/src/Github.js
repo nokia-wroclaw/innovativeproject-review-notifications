@@ -6,14 +6,16 @@ import { Route, Switch, Link as RouterLink } from 'react-router-dom';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
-import Divider from '@material-ui/core/Divider';
-import Grid from '@material-ui/core/Grid';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemText from '@material-ui/core/ListItemText';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
-import Typography from '@material-ui/core/Typography';
+import {
+  Divider,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  Typography,
+} from '@material-ui/core';
 
 const styles = {
   root: {
@@ -326,7 +328,7 @@ class Github extends Component {
             )}
           />
           <Route
-            path="/userRelated"
+            path="/user-related"
             render={props => (
               <UserRelatedPullRequests
                 {...props}
@@ -355,7 +357,7 @@ function MainSite(props) {
       {props.userRelatedList}
       <Divider light />
       <Grid item container>
-        <ListItem button component={RouterLink} to="/userRelated">
+        <ListItem button component={RouterLink} to="/user-related">
           <ListItemText primary="Show more" />
           <NavigateNextIcon />
         </ListItem>

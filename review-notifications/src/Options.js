@@ -7,27 +7,29 @@ import './App.css';
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
 import AddIcon from '@material-ui/icons/Add';
-import AppBar from '@material-ui/core/AppBar';
-import Button from '@material-ui/core/Button';
-import Checkbox from '@material-ui/core/Checkbox';
 import CloseIcon from '@material-ui/icons/Close';
 import DeleteIcon from '@material-ui/icons/Delete';
-import FormControl from '@material-ui/core/FormControl';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormGroup from '@material-ui/core/FormGroup';
-import FormLabel from '@material-ui/core/FormLabel';
-import Grid from '@material-ui/core/Grid';
-import IconButton from '@material-ui/core/IconButton';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
-import ListItemText from '@material-ui/core/ListItemText';
-import Paper from '@material-ui/core/Paper';
-import Snackbar from '@material-ui/core/Snackbar';
-import TextField from '@material-ui/core/TextField';
-import Tabs from '@material-ui/core/Tabs';
-import Tab from '@material-ui/core/Tab';
-import Typography from '@material-ui/core/Typography';
+import {
+  AppBar,
+  Button,
+  Checkbox,
+  FormControl,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
+  Grid,
+  IconButton,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
+  ListItemText,
+  Paper,
+  Snackbar,
+  TextField,
+  Tabs,
+  Tab,
+  Typography,
+} from '@material-ui/core';
 
 function TabContainer(props) {
   return (
@@ -207,7 +209,7 @@ class Options extends Component {
     if (
       !this.state.followedRepos.find(repo => repo.link === this.state.newRepo)
     ) {
-      let newRepos = this.state.followedRepos;
+      const newRepos = this.state.followedRepos.slice();
       axios
         .get(apiLink)
         .then(response => {
