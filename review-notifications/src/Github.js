@@ -16,6 +16,8 @@ import {
   ListItemText,
   Typography,
 } from '@material-ui/core';
+import ReactTimeAgo from 'react-time-ago';
+import ReadMoreAndLess from 'react-read-more-less';
 
 const styles = {
   root: {
@@ -166,29 +168,47 @@ class Github extends Component {
             {this.removeDuplicates(list)
               .slice(0, itemNum)
               .map(pr => (
-                <ListItem
-                  key={pr.link}
-                  dense
-                  button
-                  component="a"
-                  href={pr.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <ListItem key={pr.link} button>
                   <ListItemText
                     primary={
-                      <Grid container>
+                      <Grid
+                        container
+                        dense
+                        component="a"
+                        href={pr.link}
+                        style={{ textDecoration: 'none' }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Grid item xs>
                           <Typography>{pr.title}</Typography>
                         </Grid>
                         <Grid item>
                           <Typography color="textSecondary">
-                            {pr.updated.slice(0, 10)}
+                            <ReactTimeAgo date={new Date(pr.updated)} />
                           </Typography>
                         </Grid>
                       </Grid>
                     }
-                    secondary={this.listComments(pr)}
+                    secondary={
+                      <ReadMoreAndLess
+                        ref={this.ReadMore}
+                        className="read-more-content"
+                        charLimit={80}
+                        readMoreText={
+                          <Typography inline variant="caption" color="primary">
+                            Read more
+                          </Typography>
+                        }
+                        readLessText={
+                          <Typography inline variant="caption" color="primary">
+                            Read less
+                          </Typography>
+                        }
+                      >
+                        {this.listComments(pr)}
+                      </ReadMoreAndLess>
+                    }
                   />
                 </ListItem>
               ))}
@@ -215,7 +235,6 @@ class Github extends Component {
     list.forEach(item => setOfLinks.add(item.link));
     const listWithoutDuplicates = [];
     list.forEach(item => {
-      console.log(item.link);
       if (setOfLinks.has(item.link)) {
         setOfLinks.delete(item.link);
         listWithoutDuplicates.push(item);
@@ -245,29 +264,47 @@ class Github extends Component {
           <Divider />
           <List dense component="nav">
             {this.state.followedPR.slice(0, itemsNum).map(pr => (
-              <ListItem
-                key={pr.id}
-                dense
-                button
-                component="a"
-                href={pr.link}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <ListItem key={pr.id} button>
                 <ListItemText
                   primary={
-                    <Grid container>
+                    <Grid
+                      container
+                      dense
+                      component="a"
+                      href={pr.link}
+                      style={{ textDecoration: 'none' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Grid item xs>
                         <Typography>{pr.title}</Typography>
                       </Grid>
                       <Grid item>
                         <Typography color="textSecondary">
-                          {pr.updated.slice(0, 10)}
+                          <ReactTimeAgo date={new Date(pr.updated)} />
                         </Typography>
                       </Grid>
                     </Grid>
                   }
-                  secondary={this.listComments(pr)}
+                  secondary={
+                    <ReadMoreAndLess
+                      ref={this.ReadMore}
+                      className="read-more-content"
+                      charLimit={80}
+                      readMoreText={
+                        <Typography inline variant="caption" color="primary">
+                          Read more
+                        </Typography>
+                      }
+                      readLessText={
+                        <Typography inline variant="caption" color="primary">
+                          Read less
+                        </Typography>
+                      }
+                    >
+                      {this.listComments(pr)}
+                    </ReadMoreAndLess>
+                  }
                 />
               </ListItem>
             ))}
@@ -296,7 +333,9 @@ class Github extends Component {
     if (prObject.commentsData.length > 0) {
       const length = prObject.commentsData.length;
       if (length > 0) {
-        return prObject.commentsData[length - 1].body;
+        return `${prObject.commentsData[length - 1].user.login}: ${
+          prObject.commentsData[length - 1].body
+        }`;
       }
     }
     return 'There are no comments';
