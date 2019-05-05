@@ -4,6 +4,63 @@ import React, { Component } from 'react';
 import axios from 'axios';
 import './App.css';
 
+import { withStyles } from '@material-ui/core/styles';
+import PropTypes from 'prop-types';
+import AddIcon from '@material-ui/icons/Add';
+import CloseIcon from '@material-ui/icons/Close';
+import DeleteIcon from '@material-ui/icons/Delete';
+import {
+  AppBar,
+  Button,
+  Checkbox,
+  FormControl,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
+  Grid,
+  IconButton,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
+  ListItemText,
+  Paper,
+  Snackbar,
+  TextField,
+  Tabs,
+  Tab,
+  Typography,
+} from '@material-ui/core';
+
+function TabContainer(props) {
+  return (
+    <Typography component="div" style={{ padding: 8 * 3 }}>
+      {props.children}
+    </Typography>
+  );
+}
+
+TabContainer.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+const styles = theme => ({
+  root: {
+    backgroundColor: theme.palette.background.paper,
+    flexGrow: 1,
+  },
+  paper: {
+    padding: 0,
+    margin: 'auto',
+    maxWidth: 500,
+  },
+  snackbar: {
+    position: 'absolute',
+  },
+  snackbarContent: {
+    width: 360,
+  },
+});
+
 export const initialState = {
   user: '',
   auth: false,
@@ -17,6 +74,7 @@ export const initialState = {
     { id: 5, value: 'From followed repositories', isChecked: false },
   ],
   followedRepos: [],
+  tabValue: 0,
 };
 
 class Options extends Component {
@@ -29,12 +87,19 @@ class Options extends Component {
       newRepo: '',
       followedRepos: [],
       prTypes: [],
+      snackbarOpen: false,
+      snackbarMessage: '',
+      tabValue: 0,
     };
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleInputChange = this.handleInputChange.bind(this);
     this.handleChangeRepository = this.handleChangeRepository.bind(this);
     this.handleAddRepository = this.handleAddRepository.bind(this);
+    this.handleDeleteRepository = this.handleDeleteRepository.bind(this);
+    this.handleOpenSnackbar = this.handleOpenSnackbar.bind(this);
+    this.handleCloseSnackbar = this.handleCloseSnackbar.bind(this);
+    this.handleChangeTab = this.handleChangeTab.bind(this);
   }
 
   componentDidMount() {
@@ -52,6 +117,18 @@ class Options extends Component {
         });
       }.bind(this)
     );
+  }
+
+  handleOpenSnackbar(message) {
+    this.setState({ snackbarOpen: true, snackbarMessage: message });
+  }
+
+  handleCloseSnackbar() {
+    this.setState({ snackbarOpen: false });
+  }
+
+  handleChangeTab(event, value) {
+    this.setState({ tabValue: value });
   }
 
   handleChange(key, event) {
@@ -87,25 +164,34 @@ class Options extends Component {
 
   checkboxList() {
     const checkboxList = this.state.prTypes.map(option => (
-      <li key={option.id}>
-        <input
-          key={option.id}
-          type="checkbox"
-          value={option.value}
-          checked={option.isChecked}
-          onChange={this.handleInputChange}
-        />
-        {option.value}
-      </li>
+      <FormControlLabel
+        key={option.value}
+        control={
+          <Checkbox
+            checked={option.isChecked}
+            onChange={this.handleInputChange}
+            value={option.value}
+          />
+        }
+        label={option.value}
+      />
     ));
-    return <ul>{checkboxList}</ul>;
+    return <FormGroup>{checkboxList} </FormGroup>;
   }
 
   displayRepositories() {
     return this.state.followedRepos.map(item => (
-      <li key={item.link}>
-        <a href={item.link}>{item.name}</a>
-      </li>
+      <ListItem key={item.link} dense button component="a" href={item.link}>
+        <ListItemText primary={item.name} />
+        <ListItemSecondaryAction>
+          <IconButton
+            aria-label="Delete"
+            onClick={e => this.handleDeleteRepository(item, e)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </ListItemSecondaryAction>
+      </ListItem>
     ));
   }
 
@@ -119,92 +205,197 @@ class Options extends Component {
       'github.com',
       'api.github.com/repos'
     );
-    let newRepos = this.state.followedRepos;
 
-    axios
-      .get(apiLink)
-      .then(response => {
-        newRepos.push({
-          name: response.data.full_name,
-          link: this.state.newRepo,
-          prLink: response.data.pulls_url.replace('{/number}', ''),
-        });
-        this.setState({ followedRepos: newRepos, newRepo: '' }, () => {
-          chrome.storage.local.set({ followedRepos: this.state.followedRepos });
-          chrome.runtime.sendMessage({
-            message: 'Changed followed repositories',
+    if (
+      !this.state.followedRepos.find(repo => repo.link === this.state.newRepo)
+    ) {
+      const newRepos = this.state.followedRepos.slice();
+      axios
+        .get(apiLink)
+        .then(response => {
+          newRepos.push({
+            name: response.data.full_name,
+            link: this.state.newRepo,
+            prLink: response.data.pulls_url.replace('{/number}', ''),
           });
+          this.setState({ followedRepos: newRepos, newRepo: '' }, () => {
+            chrome.storage.local.set({
+              followedRepos: this.state.followedRepos,
+            });
+            chrome.runtime.sendMessage({
+              message: 'Changed followed repositories',
+            });
+          });
+        })
+        .catch(() => {
+          this.handleOpenSnackbar('Invalid link');
+          this.setState({ newRepo: '' });
         });
-      })
-      .catch(error => {
-        console.log(error);
+    } else {
+      this.handleOpenSnackbar('You are already following this repository');
+      this.setState({ newRepo: '' });
+    }
+  }
+
+  handleDeleteRepository(item, event) {
+    event.preventDefault();
+    let newRepos = this.state.followedRepos.filter(
+      repo => repo.link !== item.link
+    );
+    this.setState({ followedRepos: newRepos }, () => {
+      chrome.storage.local.set({ followedRepos: this.state.followedRepos });
+      chrome.runtime.sendMessage({
+        message: 'Changed followed repositories',
       });
+    });
   }
 
   render() {
+    const { classes } = this.props;
     return (
-      <div className="Options">
-        <form onSubmit={this.handleSubmit}>
-          <div>
-            <label>
-              Username:
-              <input
-                type="text"
-                value={this.state.user}
-                onChange={e => this.handleChange('user', e)}
-              />
-            </label>
-          </div>
-          <div>
-            <input
-              type="checkbox"
-              value={this.state.auth}
-              checked={this.state.auth}
-              onChange={e => this.handleChange('auth', e)}
-              name="ifAuthToken"
-            />
-            <label htmlFor="ifAuthToken">
-              Authenticate with personal access token
-            </label>
-          </div>
-          <div>
-            <label>
-              Your personal access token:
-              <input
-                type="password"
-                value={this.state.token}
-                onChange={e => this.handleChange('token', e)}
-              />
-            </label>
-          </div>
-          <br />
-          Choose type of PR you`d like to follow:
-          <div>{this.checkboxList()}</div>
-          <input type="submit" value="Save" />
-        </form>
-        <br />
-        Add repositories you`d like to follow:
-        <div>
-          <ul>
-            {this.displayRepositories()}
-            <li>
-              <form onSubmit={this.handleAddRepository}>
-                <label>
-                  Add repository(without validation):
-                  <input
-                    type="text"
-                    value={this.state.newRepo}
-                    onChange={this.handleChangeRepository}
-                  />
-                </label>
-                <input type="submit" value="Add" />
-              </form>
-            </li>
-          </ul>
-        </div>
+      <div className={classes.root}>
+        <Paper className={classes.paper}>
+          <AppBar position="static" color="default">
+            <Tabs
+              value={this.state.tabValue}
+              onChange={this.handleChangeTab}
+              indicatorColor="primary"
+              textColor="primary"
+              variant="fullWidth"
+            >
+              <Tab label="General options" />
+              <Tab label="Followed repositories" />
+            </Tabs>
+          </AppBar>
+          {this.state.tabValue === 0 && (
+            <TabContainer>
+              <Grid item xs={12} sm container>
+                <form
+                  className={classes.container}
+                  onSubmit={this.handleSubmit}
+                  noValidate
+                  autoComplete="off"
+                >
+                  <Grid item xs container direction="column">
+                    <TextField
+                      id="username"
+                      label="Username"
+                      className={classes.textField}
+                      value={this.state.user}
+                      onChange={e => this.handleChange('user', e)}
+                      margin="normal"
+                      variant="outlined"
+                    />
+                    <TextField
+                      id="token"
+                      label="Personal access token"
+                      type="password"
+                      className={classes.textField}
+                      value={this.state.token}
+                      onChange={e => this.handleChange('token', e)}
+                      margin="normal"
+                      variant="outlined"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={this.state.auth}
+                          onChange={e => this.handleChange('auth', e)}
+                          value={this.state.auth}
+                          classes={{
+                            root: classes.root,
+                            checked: classes.checked,
+                          }}
+                        />
+                      }
+                      label="Authenticate with personal access token"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <FormControl
+                      component="fieldset"
+                      className={classes.formControl}
+                    >
+                      <FormLabel component="legend">
+                        Choose type of PR you`d like to follow:
+                      </FormLabel>
+                      {this.checkboxList()}
+                    </FormControl>
+                  </Grid>
+                  <Button
+                    variant="contained"
+                    className={classes.button}
+                    type="submit"
+                  >
+                    Save
+                  </Button>
+                </form>
+              </Grid>
+            </TabContainer>
+          )}
+          {this.state.tabValue === 1 && (
+            <TabContainer>
+              <Grid item sm container direction="column">
+                <List>{this.displayRepositories()}</List>
+                <Grid item>
+                  <form onSubmit={this.handleAddRepository}>
+                    <TextField
+                      label="Add repository"
+                      className={classes.textField}
+                      type="text"
+                      value={this.state.newRepo}
+                      onChange={this.handleChangeRepository}
+                      margin="normal"
+                      variant="outlined"
+                    />
+                    <IconButton
+                      className={classes.button}
+                      type="submit"
+                      color="inherit"
+                      aria-label="Add"
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </form>
+                </Grid>
+                <Snackbar
+                  open={this.state.snackbarOpen}
+                  autoHideDuration={4000}
+                  onClose={this.handleCloseSnackbar}
+                  ContentProps={{
+                    'aria-describedby': 'snackbar-fab-message-id',
+                    className: classes.snackbarContent,
+                  }}
+                  message={
+                    <span id="snackbar-message-id">
+                      {this.state.snackbarMessage}
+                    </span>
+                  }
+                  action={
+                    <IconButton
+                      key="close"
+                      aria-label="Close"
+                      color="inherit"
+                      className={classes.close}
+                      onClick={this.handleCloseSnackbar}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  }
+                  className={classes.snackbar}
+                />
+              </Grid>
+            </TabContainer>
+          )}
+        </Paper>
       </div>
     );
   }
 }
 
-export { Options };
+Options.propTypes = {
+  classes: PropTypes.object.isRequired,
+  theme: PropTypes.object.isRequired,
+};
+
+export default withStyles(styles)(Options);

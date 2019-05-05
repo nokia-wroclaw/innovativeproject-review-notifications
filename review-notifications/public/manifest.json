@@ -16,6 +16,6 @@
 
   "background": {
     "scripts": ["bg.js"],
-    "persistent": false
+    "persistent": true
   }
 }
