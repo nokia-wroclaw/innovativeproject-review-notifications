@@ -3,6 +3,7 @@
 import React, { Component } from 'react';
 import { initialState } from './Options';
 import { Route, Switch, Link as RouterLink } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
@@ -332,11 +333,10 @@ class Github extends Component {
   listComments(prObject) {
     if (prObject.commentsData.length > 0) {
       const length = prObject.commentsData.length;
-      if (length > 0) {
-        return `${prObject.commentsData[length - 1].user.login}: ${
-          prObject.commentsData[length - 1].body
-        }`;
-      }
+      const result = `${prObject.commentsData[length - 1].user.login}: ${
+        prObject.commentsData[length - 1].body
+      }`;
+      return <ReactMarkdown source={result} />;
     }
     return 'There are no comments';
   }

@@ -10,6 +10,7 @@
     "react-dom": "^16.8.3",
     "react-lines-ellipsis": "^0.14.1",
     "react-read-more-less": "^0.1.6",
+    "react-markdown": "^4.0.8",
     "react-router-dom": "^4.4.0",
     "react-scripts": "2.1.5",
     "react-time-ago": "^5.0.4"
