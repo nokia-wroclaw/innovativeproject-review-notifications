@@ -219,7 +219,6 @@ function checkDataFromChromeStorage(listOfPRs, stateName) {
           currPR.link //link as notification id
         );
       let wasRequestedBefore = false;
-      console.log(pr);
       if (pr) {
         wasRequestedBefore = pr.requestedReviewers.find(
           reviewer => reviewer.login === state.user

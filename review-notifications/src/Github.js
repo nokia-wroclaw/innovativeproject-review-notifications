@@ -3,6 +3,7 @@
 import React, { Component } from 'react';
 import { initialState } from './Options';
 import { Route, Switch, Link as RouterLink } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
@@ -16,6 +17,8 @@ import {
   ListItemText,
   Typography,
 } from '@material-ui/core';
+import ReactTimeAgo from 'react-time-ago';
+import './Github.css';
 
 const styles = {
   root: {
@@ -156,7 +159,9 @@ class Github extends Component {
     } else if (list.length > 0) {
       prompt = <></>;
     }
-
+    list.sort(function(a, b) {
+      return new Date(b.updated) - new Date(a.updated);
+    });
     if (list.length > 0)
       return (
         <>
@@ -166,29 +171,42 @@ class Github extends Component {
             {this.removeDuplicates(list)
               .slice(0, itemNum)
               .map(pr => (
-                <ListItem
-                  key={pr.link}
-                  dense
-                  button
-                  component="a"
-                  href={pr.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <ListItem key={pr.link} className="noPadding">
                   <ListItemText
+                    className="noPadding listElem"
                     primary={
-                      <Grid container>
+                      <Grid
+                        container
+                        dense
+                        component="a"
+                        className="buttonHover padding"
+                        href={pr.link}
+                        style={{ textDecoration: 'none' }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Grid item xs>
                           <Typography>{pr.title}</Typography>
                         </Grid>
                         <Grid item>
                           <Typography color="textSecondary">
-                            {pr.updated.slice(0, 10)}
+                            <ReactTimeAgo date={new Date(pr.updated)} />
                           </Typography>
                         </Grid>
                       </Grid>
                     }
-                    secondary={this.listComments(pr)}
+                    secondary={
+                      <div className="paddingComment">
+                        <div name="showMoreOrLess">{this.listComments(pr)}</div>
+                        <button
+                          ref={this.handleDisplayButton}
+                          className="moreOrLess"
+                          onClick={this.handleMoreLess}
+                        >
+                          show more
+                        </button>
+                      </div>
+                    }
                   />
                 </ListItem>
               ))}
@@ -215,13 +233,34 @@ class Github extends Component {
     list.forEach(item => setOfLinks.add(item.link));
     const listWithoutDuplicates = [];
     list.forEach(item => {
-      console.log(item.link);
       if (setOfLinks.has(item.link)) {
         setOfLinks.delete(item.link);
         listWithoutDuplicates.push(item);
       }
     });
     return listWithoutDuplicates;
+  }
+
+  handleMoreLess(e) {
+    const div = e.target.previousSibling;
+    if (div.className === 'showLess') {
+      div.className = '';
+      e.target.innerHTML = 'show less';
+    } else {
+      div.className += 'showLess';
+      e.target.innerHTML = 'show more';
+    }
+  }
+
+  handleDisplayButton(e) {
+    if (e) {
+      var div = e.previousElementSibling;
+      if (div.clientHeight <= 40) {
+        e.classList.add('hidden');
+      } else {
+        div.classList += 'showLess';
+      }
+    }
   }
 
   listOfFollowedPullRequests(itemsNum) {
@@ -239,35 +278,51 @@ class Github extends Component {
         option => option.value === options.FOLLOWED && option.isChecked === true
       )
     ) {
+      this.state.followedPR.sort(function(a, b) {
+        return new Date(b.updated) - new Date(a.updated);
+      });
       return (
         <>
           {header}
           <Divider />
           <List dense component="nav">
             {this.state.followedPR.slice(0, itemsNum).map(pr => (
-              <ListItem
-                key={pr.id}
-                dense
-                button
-                component="a"
-                href={pr.link}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <ListItem key={pr.id} className="noPadding">
                 <ListItemText
+                  className="noPadding listElem"
                   primary={
-                    <Grid container>
+                    <Grid
+                      container
+                      dense
+                      component="a"
+                      className="buttonHover padding"
+                      href={pr.link}
+                      style={{ textDecoration: 'none' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Grid item xs>
                         <Typography>{pr.title}</Typography>
                       </Grid>
                       <Grid item>
                         <Typography color="textSecondary">
-                          {pr.updated.slice(0, 10)}
+                          <ReactTimeAgo date={new Date(pr.updated)} />
                         </Typography>
                       </Grid>
                     </Grid>
                   }
-                  secondary={this.listComments(pr)}
+                  secondary={
+                    <div className="paddingComment">
+                      <div name="showMoreOrLess">{this.listComments(pr)}</div>
+                      <button
+                        ref={this.handleDisplayButton}
+                        className="moreOrLess"
+                        onClick={this.handleMoreLess}
+                      >
+                        Show more
+                      </button>
+                    </div>
+                  }
                 />
               </ListItem>
             ))}
@@ -295,9 +350,10 @@ class Github extends Component {
   listComments(prObject) {
     if (prObject.commentsData.length > 0) {
       const length = prObject.commentsData.length;
-      if (length > 0) {
-        return prObject.commentsData[length - 1].body;
-      }
+      const result = `${prObject.commentsData[length - 1].user.login}: ${
+        prObject.commentsData[length - 1].body
+      }`;
+      return <ReactMarkdown className="noMargin" source={result} />;
     }
     return 'There are no comments';
   }
