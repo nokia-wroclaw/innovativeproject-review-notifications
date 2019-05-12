@@ -10,6 +10,7 @@ import PropTypes from 'prop-types';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import {
+  CircularProgress,
   Divider,
   Grid,
   List,
@@ -43,6 +44,8 @@ class Github extends Component {
     super(props);
     this.state = {
       hasData: false,
+      fetchingFollowedRepos: false,
+      fetchingPullRequests: false,
       user: '',
       auth: false,
       token: '',
@@ -60,6 +63,12 @@ class Github extends Component {
       followedPR: [],
       userRelatedPRList: [],
     };
+
+    this.handleMessage.bind(this);
+
+    chrome.runtime.onMessage.addListener(message => {
+      this.handleMessage(message);
+    });
   }
 
   componentDidMount() {
@@ -78,6 +87,8 @@ class Github extends Component {
         'assignedPR',
         'mentionedPR',
         'reviewedPR',
+        'fetchingFollowedRepos',
+        'fetchingPullRequests',
       ],
       function(result) {
         this.setState(
@@ -92,14 +103,53 @@ class Github extends Component {
             mentionedPR: result.mentionedPR ? result.mentionedPR : [],
             reviewedPR: result.reviewedPR ? result.reviewedPR : [],
             hasData: true,
+            fetchingFollowedRepos: result.fetchingFollowedRepos,
+            fetchingPullRequests: result.fetchingPullRequests,
           },
           () => {
             this.makeUserRelatedPRList();
-            this.listOfPullRequests();
           }
         );
       }.bind(this)
     );
+  }
+
+  handleMessage(msg) {
+    switch (msg.message) {
+      case 'Fetching followed repos':
+        this.setState({ fetchingFollowedRepos: true });
+        break;
+      case 'Followed repos fetched':
+        chrome.storage.local.get(['followedPR'], result => {
+          this.setState({
+            followedPR: result.followedPR,
+            fetchingFollowedRepos: false,
+          });
+        });
+        break;
+      case 'Fetching pull requests':
+        this.setState({ fetchingPullRequests: true });
+        break;
+      case 'Pull requests fetched':
+        chrome.storage.local.get(
+          ['user', 'auth', 'token', 'prTypes'],
+          result => {
+            this.setState(
+              {
+                user: result.username ? result.username : this.state.user,
+                auth: result.auth ? result.auth : this.state.auth,
+                token: result.token ? result.token : this.state.token,
+                prOptions: result.prTypes ? result.prTypes : this.state.prTypes,
+              },
+              () => {
+                this.makeUserRelatedPRList();
+                this.setState({ fetchingPullRequests: false });
+              }
+            );
+          }
+        );
+        break;
+    }
   }
 
   makeUserRelatedPRList() {
@@ -134,6 +184,20 @@ class Github extends Component {
   listOfPullRequests(itemNum) {
     const { classes } = this.props;
     const list = this.state.userRelatedPRList;
+    let prompt = <ListItemText dense primary="No pull requests" />;
+
+    if (this.state.user === '')
+      prompt = (
+        <ListItemText
+          dense
+          primary="Add username to display more pull requests"
+        />
+      );
+    else if (this.state.token === '' || !this.state.auth)
+      prompt = (
+        <ListItemText dense primary="Add token to display more pull requests" />
+      );
+    else if (list.length > 0) prompt = <></>;
 
     const header = (
       <Grid item container class={classes.bar}>
@@ -142,27 +206,23 @@ class Github extends Component {
         </ListItem>
       </Grid>
     );
-    let prompt = <ListItemText dense primary="No pull requests" />;
-    if (!this.state.hasData) {
-      prompt = <ListItemText dense primary="Loading..." />;
-    } else if (this.state.user === '') {
-      prompt = (
-        <ListItemText
-          dense
-          primary="Add username to display more pull requests"
-        />
+
+    if (!this.state.hasData || this.state.fetchingPullRequests)
+      return (
+        <>
+          {header}
+          <Divider />
+          <Grid item container style={{ textAlign: 'center' }}>
+            <ListItem>
+              <CircularProgress className={classes.progress} />
+            </ListItem>
+          </Grid>
+        </>
       );
-    } else if (this.state.token === '' || !this.state.auth) {
-      prompt = (
-        <ListItemText dense primary="Add token to display more pull requests" />
-      );
-    } else if (list.length > 0) {
-      prompt = <></>;
-    }
-    list.sort(function(a, b) {
-      return new Date(b.updated) - new Date(a.updated);
-    });
-    if (list.length > 0)
+    else if (list.length > 0) {
+      list.sort(function(a, b) {
+        return new Date(b.updated) - new Date(a.updated);
+      });
       return (
         <>
           {header}
@@ -216,7 +276,7 @@ class Github extends Component {
           </Grid>
         </>
       );
-    else
+    } else
       return (
         <>
           {header}
@@ -272,7 +332,19 @@ class Github extends Component {
         </ListItem>
       </Grid>
     );
-    if (
+    if (this.state.fetchingFollowedRepos) {
+      return (
+        <>
+          {header}
+          <Divider />
+          <Grid item container>
+            <ListItem style={{ textAlign: 'center' }}>
+              <CircularProgress className={classes.progress} />
+            </ListItem>
+          </Grid>
+        </>
+      );
+    } else if (
       this.state.followedPR.length > 0 &&
       this.state.prOptions.find(
         option => option.value === options.FOLLOWED && option.isChecked === true

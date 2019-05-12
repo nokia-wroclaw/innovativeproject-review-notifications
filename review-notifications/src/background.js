@@ -37,29 +37,15 @@ chrome.runtime.onInstalled.addListener(function() {
   onStart();
 });
 
-chrome.runtime.onMessage.addListener(request => {
-  if (request.message === 'Changed followed repositories') {
-    chrome.storage.local.get(['followedRepos'], function(result) {
-      state.followedRepos = result.followedRepos
-        ? result.followedRepos
-        : state.followedRepos;
-      getPRFromFollowedRepos();
-    });
+chrome.runtime.onMessage.addListener(async request => {
+  if (request.message === 'Changed options') {
+    processOptionsChanges();
   }
 });
 
-chrome.runtime.onMessage.addListener(request => {
-  if (request.message === 'Changed options') {
-    chrome.storage.local.get(['username', 'auth', 'token', 'prTypes'], function(
-      result
-    ) {
-      state.user = result.username ? result.username : state.user;
-      state.auth = result.auth ? result.auth : state.auth;
-      state.token = result.token ? result.token : state.token;
-      state.prOptions = result.prTypes ? result.prTypes : state.prOptions;
-    });
-    getPullRequests();
-    updateStateInStorage();
+chrome.runtime.onMessage.addListener(async request => {
+  if (request.message === 'Changed followed repositories') {
+    processFollowedChanges();
   }
 });
 
@@ -86,6 +72,74 @@ function startTimer() {
     await checkForDifferences();
     setTimeout(run, 6000);
   }, 6000);
+}
+
+function processOptionsChanges() {
+  chrome.runtime.sendMessage({
+    message: 'Fetching pull requests',
+  });
+  chrome.storage.local.set(
+    {
+      fetchingPullRequests: true,
+    },
+    async function() {
+      const prevFollowedChecked = state.prOptions.find(
+        option => option.value === options.FOLLOWED
+      ).isChecked;
+      chrome.storage.local.get(
+        ['username', 'auth', 'token', 'prTypes'],
+        function(result) {
+          state.user = result.username ? result.username : state.user;
+          state.auth = result.auth ? result.auth : state.auth;
+          state.token = result.token ? result.token : state.token;
+          state.prOptions = result.prTypes ? result.prTypes : state.prOptions;
+          const currentFollowedChecked = state.prOptions.find(
+            option => option.value === options.FOLLOWED
+          ).isChecked;
+          if (prevFollowedChecked !== currentFollowedChecked) {
+            processFollowedChanges();
+          }
+        }
+      );
+      await getPullRequests();
+      updateStateInStorage(() => {
+        chrome.runtime.sendMessage({
+          message: 'Pull requests fetched',
+        });
+        chrome.storage.local.set({
+          fetchingPullRequests: false,
+        });
+      });
+    }
+  );
+}
+
+function processFollowedChanges() {
+  chrome.runtime.sendMessage({
+    message: 'Fetching followed repos',
+  });
+  chrome.storage.local.set(
+    {
+      fetchingFollowedRepos: true,
+    },
+    async function() {
+      await chrome.storage.local.get(['followedRepos'], async function(result) {
+        state.followedRepos = result.followedRepos
+          ? result.followedRepos
+          : state.followedRepos;
+        await getPRFromFollowedRepos();
+
+        updateStateInStorage(() => {
+          chrome.runtime.sendMessage({
+            message: 'Followed repos fetched',
+          });
+          chrome.storage.local.set({
+            fetchingFollowedRepos: false,
+          });
+        });
+      });
+    }
+  );
 }
 
 function addPRToList(prList, newPR) {
@@ -290,14 +344,21 @@ async function getPullRequests() {
   }
 }
 
-function updateStateInStorage() {
-  chrome.storage.local.set({
-    createdPR: state.createdPR,
-    assignedPR: state.assignedPR,
-    mentionedPR: state.mentionedPR,
-    reviewedPR: state.reviewedPR,
-    followedPR: state.followedPR,
-  });
+function updateStateInStorage(callback) {
+  chrome.storage.local.set(
+    {
+      createdPR: state.createdPR,
+      assignedPR: state.assignedPR,
+      mentionedPR: state.mentionedPR,
+      reviewedPR: state.reviewedPR,
+      followedPR: state.followedPR,
+    },
+    async () => {
+      if (callback) {
+        callback();
+      }
+    }
+  );
 }
 
 async function extractComments(url) {
