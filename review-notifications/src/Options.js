@@ -219,16 +219,20 @@ class Options extends Component {
             prLink: response.data.pulls_url.replace('{/number}', ''),
           });
           this.setState({ followedRepos: newRepos, newRepo: '' }, () => {
-            chrome.storage.local.set({
-              followedRepos: this.state.followedRepos,
-            });
-            chrome.runtime.sendMessage({
-              message: 'Changed followed repositories',
-            });
+            chrome.storage.local.set(
+              {
+                followedRepos: this.state.followedRepos,
+              },
+              () => {
+                chrome.runtime.sendMessage({
+                  message: 'Changed followed repositories',
+                });
+              }
+            );
           });
         })
         .catch(() => {
-          this.handleOpenSnackbar('Invalid link');
+          this.handleOpenSnackbar('Invalid link or api limit exceeded');
           this.setState({ newRepo: '' });
         });
     } else {
@@ -243,10 +247,14 @@ class Options extends Component {
       repo => repo.link !== item.link
     );
     this.setState({ followedRepos: newRepos }, () => {
-      chrome.storage.local.set({ followedRepos: this.state.followedRepos });
-      chrome.runtime.sendMessage({
-        message: 'Changed followed repositories',
-      });
+      chrome.storage.local.set(
+        { followedRepos: this.state.followedRepos },
+        () => {
+          chrome.runtime.sendMessage({
+            message: 'Changed followed repositories',
+          });
+        }
+      );
     });
   }
 
