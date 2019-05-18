@@ -241,6 +241,12 @@ class Github extends Component {
                         component="a"
                         className="buttonHover padding"
                         href={pr.link}
+                        onClick={() => {
+                          if (pr.hasNewComment) {
+                            pr.hasNewComment = false;
+                            this.saveInStorage();
+                          }
+                        }}
                         style={{ textDecoration: 'none' }}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -257,9 +263,9 @@ class Github extends Component {
                     }
                     secondary={
                       <div
-                        className={
-                          'paddingComment ' + (pr.hasNewComment ? 'isNew' : '')
-                        }
+                        className={`paddingComment ${
+                          pr.hasNewComment ? 'isNew' : ''
+                        }`}
                       >
                         <div name="showMoreOrLess">{this.listComments(pr)}</div>
                         <button
@@ -270,7 +276,7 @@ class Github extends Component {
                           show more
                         </button>
                         <button
-                          ref={this.handleReadOnLoad}
+                          ref={this.handleReadButtonOnLoad}
                           data-length={pr.commentsData.length}
                           data-isnew={pr.hasNewComment}
                           className="commentButton left"
@@ -382,6 +388,12 @@ class Github extends Component {
                       component="a"
                       className="buttonHover padding"
                       href={pr.link}
+                      onClick={() => {
+                        if (pr.hasNewComment) {
+                          pr.hasNewComment = false;
+                          this.saveInStorage();
+                        }
+                      }}
                       style={{ textDecoration: 'none' }}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -398,9 +410,9 @@ class Github extends Component {
                   }
                   secondary={
                     <div
-                      className={
-                        'paddingComment ' + (pr.hasNewComment ? 'isNew' : '')
-                      }
+                      className={`paddingComment ${
+                        pr.hasNewComment ? 'isNew' : ''
+                      }`}
                     >
                       <div name="showMoreOrLess">{this.listComments(pr)}</div>
                       <button
@@ -411,7 +423,7 @@ class Github extends Component {
                         Show more
                       </button>
                       <button
-                        ref={this.handleReadOnLoad}
+                        ref={this.handleReadButtonOnLoad}
                         data-length={pr.commentsData.length}
                         data-isnew={pr.hasNewComment}
                         className="commentButton left"
@@ -483,9 +495,9 @@ class Github extends Component {
     this.saveInStorage();
   }
 
-  handleReadOnLoad(e) {
+  handleReadButtonOnLoad(e) {
     if (e) {
-      if (e.dataset.length == 0) {
+      if (e.dataset.length === 0) {
         e.classList.add('hidden');
       }
       if (e.dataset.isNew) {

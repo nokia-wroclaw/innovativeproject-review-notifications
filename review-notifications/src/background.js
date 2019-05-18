@@ -263,7 +263,7 @@ async function checkForDifferences() {
   );
 }
 function checkDataFromChromeStorage(listOfPRs, stateName) {
-  if (listOfPRs.length > 0)
+  if (listOfPRs && listOfPRs.length > 0)
     state[stateName].map(currPR => {
       const pr = listOfPRs.find(resPr => resPr.link === currPR.link);
       if (pr) currPR.hasNewComment = pr.hasNewComment;
