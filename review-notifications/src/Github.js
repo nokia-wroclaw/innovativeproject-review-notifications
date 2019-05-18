@@ -256,14 +256,27 @@ class Github extends Component {
                       </Grid>
                     }
                     secondary={
-                      <div className="paddingComment">
+                      <div
+                        className={
+                          'paddingComment ' + (pr.hasNewComment ? 'isNew' : '')
+                        }
+                      >
                         <div name="showMoreOrLess">{this.listComments(pr)}</div>
                         <button
                           ref={this.handleDisplayButton}
-                          className="moreOrLess"
+                          className="commentButton right"
                           onClick={this.handleMoreLess}
                         >
                           show more
+                        </button>
+                        <button
+                          ref={this.handleReadOnLoad}
+                          data-length={pr.commentsData.length}
+                          data-isnew={pr.hasNewComment}
+                          className="commentButton left"
+                          onClick={this.handleReadButton.bind(this, pr)}
+                        >
+                          {pr.hasNewComment ? 'Mark as read' : 'Mark as unread'}
                         </button>
                       </div>
                     }
@@ -384,14 +397,27 @@ class Github extends Component {
                     </Grid>
                   }
                   secondary={
-                    <div className="paddingComment">
+                    <div
+                      className={
+                        'paddingComment ' + (pr.hasNewComment ? 'isNew' : '')
+                      }
+                    >
                       <div name="showMoreOrLess">{this.listComments(pr)}</div>
                       <button
                         ref={this.handleDisplayButton}
-                        className="moreOrLess"
+                        className="commentButton right"
                         onClick={this.handleMoreLess}
                       >
                         Show more
+                      </button>
+                      <button
+                        ref={this.handleReadOnLoad}
+                        data-length={pr.commentsData.length}
+                        data-isnew={pr.hasNewComment}
+                        className="commentButton left"
+                        onClick={this.handleReadButton.bind(this, pr)}
+                      >
+                        {pr.hasNewComment ? 'Mark as read' : 'Mark as unread'}
                       </button>
                     </div>
                   }
@@ -412,6 +438,7 @@ class Github extends Component {
                 dense
                 primary="You do not have any followed repositories or option to display them
                   is not checked."
+                target
               />
             </ListItem>
           </Grid>
@@ -422,12 +449,56 @@ class Github extends Component {
   listComments(prObject) {
     if (prObject.commentsData.length > 0) {
       const length = prObject.commentsData.length;
-      const result = `${prObject.commentsData[length - 1].user.login}: ${
-        prObject.commentsData[length - 1].body
-      }`;
+      const lastComment = prObject.commentsData[length - 1];
+      const result = `${lastComment.user.login}: ${lastComment.body}`;
       return <ReactMarkdown className="noMargin" source={result} />;
     }
     return 'There are no comments';
+  }
+
+  saveInStorage() {
+    chrome.storage.local.set({
+      createdPR: this.state.createdPR,
+      assignedPR: this.state.assignedPR,
+      mentionedPR: this.state.mentionedPR,
+      reviewedPR: this.state.reviewedPR,
+      followedPR: this.state.followedPR,
+    });
+  }
+
+  markAsReadOrUnread(prObject, e) {
+    if (prObject.hasNewComment) {
+      prObject.hasNewComment = false;
+      e.target.parentNode.classList.remove('isNew');
+      e.target.innerHTML = 'Mark as unread';
+    } else {
+      prObject.hasNewComment = true;
+      e.target.parentNode.classList.add('isNew');
+      e.target.innerHTML = 'Mark as read';
+    }
+  }
+
+  handleReadButton(prObject, e) {
+    this.markAsReadOrUnread(prObject, e);
+    this.saveInStorage();
+  }
+
+  handleReadOnLoad(e) {
+    if (e) {
+      if (e.dataset.length == 0) {
+        e.classList.add('hidden');
+      }
+      if (e.dataset.isNew) {
+        e.innerHTML = 'Mark as read';
+      }
+    }
+  }
+
+  checkIfIsNew(e) {
+    if (e && e.dataset.isnew) {
+      console.log(e);
+      e.classList.add('isNew');
+    }
   }
 
   render() {

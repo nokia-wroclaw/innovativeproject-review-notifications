@@ -149,6 +149,7 @@ function addPRToList(prList, newPR) {
     updated: newPR.updated,
     commentsData: newPR.commentsData,
     requestedReviewers: newPR.requestedReviewers,
+    hasNewComment: newPR.hasNewComment,
   });
 }
 
@@ -215,6 +216,7 @@ async function extractDataFromPR(prObject) {
       mentioned: mentionedUsers ? mentionedUsers : [],
       commentsData: comments ? comments : [],
       requestedReviewers: prObject.requested_reviewers,
+      hasNewComment: false, //default false
     };
   } catch (error) {
     console.log(error);
@@ -255,6 +257,7 @@ async function checkForDifferences() {
       checkDataFromChromeStorage(result.assignedPR, 'assignedPR');
       checkDataFromChromeStorage(result.mentionedPR, 'mentionedPR');
       checkDataFromChromeStorage(result.reviewedPR, 'reviewedPR');
+      checkDataFromChromeStorage(result.followedPR, 'followedPR');
       updateStateInStorage();
     }.bind(this)
   );
@@ -263,15 +266,17 @@ function checkDataFromChromeStorage(listOfPRs, stateName) {
   if (listOfPRs.length > 0)
     state[stateName].map(currPR => {
       const pr = listOfPRs.find(resPr => resPr.link === currPR.link);
+      if (pr) currPR.hasNewComment = pr.hasNewComment;
       if (pr && currPR.updated !== pr.updated)
         checkForNewComments(currPR, pr.updated);
-      else if (!pr)
+      else if (!pr) {
         //new pr
         sendNotification(
           'New pull request!',
           `There is a new pull request named ${currPR.title}.`,
           currPR.link //link as notification id
         );
+      }
       let wasRequestedBefore = false;
       if (pr) {
         wasRequestedBefore = pr.requestedReviewers.find(
@@ -293,9 +298,10 @@ function checkDataFromChromeStorage(listOfPRs, stateName) {
 function checkForNewComments(newPR, oldPRLastUpdate) {
   newPR.commentsData.forEach(commentInfo => {
     if (commentInfo.updated_at > oldPRLastUpdate) {
+      newPR.hasNewComment = true;
       const message = `${commentInfo.user.login} wrote: ${commentInfo.body}`;
       sendNotification(
-        `${newPR.title} has changed!`,
+        `${newPR.title} has new comment!`,
         message,
         commentInfo.html_url
       );
