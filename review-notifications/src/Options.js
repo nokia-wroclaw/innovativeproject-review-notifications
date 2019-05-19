@@ -2,13 +2,13 @@
 
 import React, { Component } from 'react';
 import axios from 'axios';
-import './App.css';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
 import AddIcon from '@material-ui/icons/Add';
 import CloseIcon from '@material-ui/icons/Close';
 import DeleteIcon from '@material-ui/icons/Delete';
+import indigo from '@material-ui/core/colors/indigo';
 import {
   AppBar,
   Button,
@@ -59,6 +59,20 @@ const styles = theme => ({
   snackbarContent: {
     width: 360,
   },
+  checkboxRoot: {
+    color: indigo[600],
+    '&$checked': {
+      color: indigo[500],
+    },
+  },
+  checked: {},
+  gridItemBox: { paddingBottom: 10 },
+  oneLineForm: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  wideInput: { width: '85%' },
 });
 
 export const initialState = {
@@ -151,6 +165,7 @@ class Options extends Component {
     chrome.runtime.sendMessage({
       message: 'Changed options',
     });
+    this.handleOpenSnackbar('Options saved');
   }
 
   handleInputChange(event) {
@@ -163,6 +178,7 @@ class Options extends Component {
   }
 
   checkboxList() {
+    const { classes } = this.props;
     const checkboxList = this.state.prTypes.map(option => (
       <FormControlLabel
         key={option.value}
@@ -171,6 +187,10 @@ class Options extends Component {
             checked={option.isChecked}
             onChange={this.handleInputChange}
             value={option.value}
+            classes={{
+              root: classes.checkboxRoot,
+              checked: classes.checked,
+            }}
           />
         }
         label={option.value}
@@ -284,7 +304,12 @@ class Options extends Component {
                   noValidate
                   autoComplete="off"
                 >
-                  <Grid item xs container direction="column">
+                  <Grid
+                    item
+                    container
+                    direction="column"
+                    className={classes.gridItemBox}
+                  >
                     <TextField
                       id="username"
                       label="Username"
@@ -311,7 +336,7 @@ class Options extends Component {
                           onChange={e => this.handleChange('auth', e)}
                           value={this.state.auth}
                           classes={{
-                            root: classes.root,
+                            root: classes.checkboxRoot,
                             checked: classes.checked,
                           }}
                         />
@@ -319,7 +344,7 @@ class Options extends Component {
                       label="Authenticate with personal access token"
                     />
                   </Grid>
-                  <Grid item>
+                  <Grid item className={classes.gridItemBox}>
                     <FormControl
                       component="fieldset"
                       className={classes.formControl}
@@ -346,7 +371,10 @@ class Options extends Component {
               <Grid item sm container direction="column">
                 <List>{this.displayRepositories()}</List>
                 <Grid item>
-                  <form onSubmit={this.handleAddRepository}>
+                  <form
+                    onSubmit={this.handleAddRepository}
+                    className={classes.oneLineForm}
+                  >
                     <TextField
                       label="Add repository"
                       className={classes.textField}
@@ -355,7 +383,9 @@ class Options extends Component {
                       onChange={this.handleChangeRepository}
                       margin="normal"
                       variant="outlined"
+                      className={classes.wideInput}
                     />
+
                     <IconButton
                       className={classes.button}
                       type="submit"
@@ -366,35 +396,33 @@ class Options extends Component {
                     </IconButton>
                   </form>
                 </Grid>
-                <Snackbar
-                  open={this.state.snackbarOpen}
-                  autoHideDuration={4000}
-                  onClose={this.handleCloseSnackbar}
-                  ContentProps={{
-                    'aria-describedby': 'snackbar-fab-message-id',
-                    className: classes.snackbarContent,
-                  }}
-                  message={
-                    <span id="snackbar-message-id">
-                      {this.state.snackbarMessage}
-                    </span>
-                  }
-                  action={
-                    <IconButton
-                      key="close"
-                      aria-label="Close"
-                      color="inherit"
-                      className={classes.close}
-                      onClick={this.handleCloseSnackbar}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  }
-                  className={classes.snackbar}
-                />
               </Grid>
             </TabContainer>
           )}
+          <Snackbar
+            open={this.state.snackbarOpen}
+            autoHideDuration={4000}
+            onClose={this.handleCloseSnackbar}
+            ContentProps={{
+              'aria-describedby': 'snackbar-fab-message-id',
+              className: classes.snackbarContent,
+            }}
+            message={
+              <span id="snackbar-message-id">{this.state.snackbarMessage}</span>
+            }
+            action={
+              <IconButton
+                key="close"
+                aria-label="Close"
+                color="inherit"
+                className={classes.close}
+                onClick={this.handleCloseSnackbar}
+              >
+                <CloseIcon />
+              </IconButton>
+            }
+            className={classes.snackbar}
+          />
         </Paper>
       </div>
     );
