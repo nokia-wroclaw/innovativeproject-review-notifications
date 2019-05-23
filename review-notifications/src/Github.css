@@ -31,8 +31,23 @@ a.buttonHover:hover {
   margin-top: 0px;
 }
 
+.isNew p {
+  font-weight: 900;
+  color: rgba(0.8, 0.8, 0.8, 0.8);
+}
+
 /*button more or less*/
-.moreOrLess {
+.commentButton.left {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 20px;
+  width: 90px;
+  font-size: 10px;
+  color: gray !important;
+}
+
+.commentButton.right {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -42,7 +57,7 @@ a.buttonHover:hover {
   color: gray !important;
 }
 
-.moreOrLess {
+.commentButton {
   border: none;
   border-radius: 4px;
   background-color: transparent;
@@ -50,7 +65,7 @@ a.buttonHover:hover {
   text-align: center;
 }
 
-.moreOrLess:hover {
+.commentButton:hover {
   background-color: #a7a5a5;
   color: white;
 }
