@@ -140,13 +140,12 @@ class FollowedOptions extends Component {
           >
             <TextField
               label="Add repository"
-              className={classes.textField}
+              className={`${classes.textField} ${classes.wideInput}`}
               type="text"
               value={this.state.newRepo}
               onChange={this.handleChangeRepository}
               margin="normal"
               variant="outlined"
-              className={classes.wideInput}
             />
             <IconButton
               className={classes.button}
@@ -165,6 +164,7 @@ class FollowedOptions extends Component {
 
 FollowedOptions.propTypes = {
   classes: PropTypes.object.isRequired,
+  openSnackbar: PropTypes.func,
 };
 
 export default withStyles(styles)(FollowedOptions);

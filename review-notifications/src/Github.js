@@ -1,7 +1,7 @@
 /*global chrome*/
 
 import React, { Component } from 'react';
-import { initialState } from './Options';
+import { initialState } from './UserOptions';
 import { Route, Switch, Link as RouterLink } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 
