@@ -1,13 +1,12 @@
 /*global chrome*/
 
 import React, { Component } from 'react';
-import axios from 'axios';
+import FollowedOptions from './FollowedOptions';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
-import AddIcon from '@material-ui/icons/Add';
 import CloseIcon from '@material-ui/icons/Close';
-import DeleteIcon from '@material-ui/icons/Delete';
+
 import indigo from '@material-ui/core/colors/indigo';
 import {
   AppBar,
@@ -19,10 +18,6 @@ import {
   FormLabel,
   Grid,
   IconButton,
-  List,
-  ListItem,
-  ListItemSecondaryAction,
-  ListItemText,
   Paper,
   Snackbar,
   TextField,
@@ -66,13 +61,6 @@ const styles = theme => ({
     },
   },
   checked: {},
-  gridItemBox: { paddingBottom: 10 },
-  oneLineForm: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  wideInput: { width: '85%' },
 });
 
 export const initialState = {
@@ -87,7 +75,6 @@ export const initialState = {
     { id: 4, value: 'Review request', isChecked: false },
     { id: 5, value: 'From followed repositories', isChecked: false },
   ],
-  followedRepos: [],
   tabValue: 0,
 };
 
@@ -98,19 +85,15 @@ class Options extends Component {
       user: '',
       auth: false,
       token: '',
-      newRepo: '',
-      followedRepos: [],
       prTypes: [],
       snackbarOpen: false,
       snackbarMessage: '',
       tabValue: 0,
     };
+
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleInputChange = this.handleInputChange.bind(this);
-    this.handleChangeRepository = this.handleChangeRepository.bind(this);
-    this.handleAddRepository = this.handleAddRepository.bind(this);
-    this.handleDeleteRepository = this.handleDeleteRepository.bind(this);
     this.handleOpenSnackbar = this.handleOpenSnackbar.bind(this);
     this.handleCloseSnackbar = this.handleCloseSnackbar.bind(this);
     this.handleChangeTab = this.handleChangeTab.bind(this);
@@ -125,9 +108,6 @@ class Options extends Component {
           auth: result.auth ? result.auth : initialState.auth,
           token: result.token ? result.token : initialState.token,
           prTypes: result.prTypes ? result.prTypes : initialState.prTypes,
-          followedRepos: result.followedRepos
-            ? result.followedRepos
-            : initialState.followedRepos,
         });
       }.bind(this)
     );
@@ -199,85 +179,6 @@ class Options extends Component {
     return <FormGroup>{checkboxList} </FormGroup>;
   }
 
-  displayRepositories() {
-    return this.state.followedRepos.map(item => (
-      <ListItem key={item.link} dense button component="a" href={item.link}>
-        <ListItemText primary={item.name} />
-        <ListItemSecondaryAction>
-          <IconButton
-            aria-label="Delete"
-            onClick={e => this.handleDeleteRepository(item, e)}
-          >
-            <DeleteIcon />
-          </IconButton>
-        </ListItemSecondaryAction>
-      </ListItem>
-    ));
-  }
-
-  handleChangeRepository(event) {
-    this.setState({ newRepo: event.target.value });
-  }
-
-  handleAddRepository(event) {
-    event.preventDefault();
-    const apiLink = this.state.newRepo.replace(
-      'github.com',
-      'api.github.com/repos'
-    );
-
-    if (
-      !this.state.followedRepos.find(repo => repo.link === this.state.newRepo)
-    ) {
-      const newRepos = this.state.followedRepos.slice();
-      axios
-        .get(apiLink)
-        .then(response => {
-          newRepos.push({
-            name: response.data.full_name,
-            link: this.state.newRepo,
-            prLink: response.data.pulls_url.replace('{/number}', ''),
-          });
-          this.setState({ followedRepos: newRepos, newRepo: '' }, () => {
-            chrome.storage.local.set(
-              {
-                followedRepos: this.state.followedRepos,
-              },
-              () => {
-                chrome.runtime.sendMessage({
-                  message: 'Changed followed repositories',
-                });
-              }
-            );
-          });
-        })
-        .catch(() => {
-          this.handleOpenSnackbar('Invalid link or api limit exceeded');
-          this.setState({ newRepo: '' });
-        });
-    } else {
-      this.handleOpenSnackbar('You are already following this repository');
-      this.setState({ newRepo: '' });
-    }
-  }
-
-  handleDeleteRepository(item, event) {
-    event.preventDefault();
-    let newRepos = this.state.followedRepos.filter(
-      repo => repo.link !== item.link
-    );
-    this.setState({ followedRepos: newRepos }, () => {
-      chrome.storage.local.set(
-        { followedRepos: this.state.followedRepos },
-        () => {
-          chrome.runtime.sendMessage({
-            message: 'Changed followed repositories',
-          });
-        }
-      );
-    });
-  }
-
   render() {
     const { classes } = this.props;
     return (
@@ -297,6 +198,12 @@ class Options extends Component {
           </AppBar>
           {this.state.tabValue === 0 && (
             <TabContainer>
+              {/* <UserOptions 
+                prTypes={this.state.prTypes}
+                user={this.state.user}
+                token={this.state.token}
+                auth={this.state.auth}
+                /> */}
               <Grid item xs={12} sm container>
                 <form
                   className={classes.container}
@@ -368,35 +275,7 @@ class Options extends Component {
           )}
           {this.state.tabValue === 1 && (
             <TabContainer>
-              <Grid item sm container direction="column">
-                <List>{this.displayRepositories()}</List>
-                <Grid item>
-                  <form
-                    onSubmit={this.handleAddRepository}
-                    className={classes.oneLineForm}
-                  >
-                    <TextField
-                      label="Add repository"
-                      className={classes.textField}
-                      type="text"
-                      value={this.state.newRepo}
-                      onChange={this.handleChangeRepository}
-                      margin="normal"
-                      variant="outlined"
-                      className={classes.wideInput}
-                    />
-
-                    <IconButton
-                      className={classes.button}
-                      type="submit"
-                      color="inherit"
-                      aria-label="Add"
-                    >
-                      <AddIcon />
-                    </IconButton>
-                  </form>
-                </Grid>
-              </Grid>
+              <FollowedOptions openSnackbar={this.handleOpenSnackbar} />
             </TabContainer>
           )}
           <Snackbar
