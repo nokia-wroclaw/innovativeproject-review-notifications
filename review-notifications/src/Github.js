@@ -3,7 +3,8 @@
 import React, { Component } from 'react';
 import { initialState } from './UserOptions';
 import { Route, Switch, Link as RouterLink } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import ListElement from './ListElement';
+import './Github.css';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
@@ -16,18 +17,17 @@ import {
   List,
   ListItem,
   ListItemText,
-  Typography,
 } from '@material-ui/core';
-import ReactTimeAgo from 'react-time-ago';
-import './Github.css';
 
 const styles = {
   root: {
     flexGrow: 1,
   },
-  bar: {
-    fontSize: '0.9em',
-    backgroundColor: '#e0e0e0',
+  mainBarFont: {
+    // color: '#4253b3',
+    textTransform: 'uppercase',
+    fontSize: '1.1em',
+    fontWeight: 'bold',
   },
 };
 
@@ -65,6 +65,7 @@ class Github extends Component {
     };
 
     this.handleMessage.bind(this);
+    this.saveInStorage = this.saveInStorage.bind(this);
 
     chrome.runtime.onMessage.addListener(message => {
       this.handleMessage(message);
@@ -200,9 +201,14 @@ class Github extends Component {
     else if (list.length > 0) prompt = <></>;
 
     const header = (
-      <Grid item container class={classes.bar}>
+      <Grid item container className="mainBar">
         <ListItem>
-          <ListItemText primary="User related pull requests" />
+          <ListItemText
+            primary="User related pull requests"
+            classes={{
+              primary: classes.mainBarFont,
+            }}
+          />
         </ListItem>
       </Grid>
     );
@@ -227,67 +233,15 @@ class Github extends Component {
         <>
           {header}
           <Divider />
-          <List dense component="nav">
+          <List dense component="nav" disablePadding="true">
             {this.removeDuplicates(list)
               .slice(0, itemNum)
               .map(pr => (
-                <ListItem key={pr.link} className="noPadding">
-                  <ListItemText
-                    className="noPadding listElem"
-                    primary={
-                      <Grid
-                        container
-                        dense
-                        component="a"
-                        className="buttonHover padding"
-                        href={pr.link}
-                        onClick={() => {
-                          if (pr.hasNewComment) {
-                            pr.hasNewComment = false;
-                            this.saveInStorage();
-                          }
-                        }}
-                        style={{ textDecoration: 'none' }}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Grid item xs>
-                          <Typography>{pr.title}</Typography>
-                        </Grid>
-                        <Grid item>
-                          <Typography color="textSecondary">
-                            <ReactTimeAgo date={new Date(pr.updated)} />
-                          </Typography>
-                        </Grid>
-                      </Grid>
-                    }
-                    secondary={
-                      <div
-                        className={`paddingComment ${
-                          pr.hasNewComment ? 'isNew' : ''
-                        }`}
-                      >
-                        <div name="showMoreOrLess">{this.listComments(pr)}</div>
-                        <button
-                          ref={this.handleDisplayButton}
-                          className="commentButton right"
-                          onClick={this.handleMoreLess}
-                        >
-                          show more
-                        </button>
-                        <button
-                          ref={this.handleReadButtonOnLoad}
-                          data-length={pr.commentsData.length}
-                          data-isnew={pr.hasNewComment}
-                          className="commentButton left"
-                          onClick={this.handleReadButton.bind(this, pr)}
-                        >
-                          {pr.hasNewComment ? 'Mark as read' : 'Mark as unread'}
-                        </button>
-                      </div>
-                    }
-                  />
-                </ListItem>
+                <ListElement
+                  key={pr.link}
+                  pr={pr}
+                  saveInStorage={this.saveInStorage}
+                />
               ))}
           </List>
           <Grid item container>
@@ -320,34 +274,17 @@ class Github extends Component {
     return listWithoutDuplicates;
   }
 
-  handleMoreLess(e) {
-    const div = e.target.previousSibling;
-    if (div.className === 'showLess') {
-      div.className = '';
-      e.target.innerHTML = 'show less';
-    } else {
-      div.className += 'showLess';
-      e.target.innerHTML = 'show more';
-    }
-  }
-
-  handleDisplayButton(e) {
-    if (e) {
-      var div = e.previousElementSibling;
-      if (div.clientHeight <= 40) {
-        e.classList.add('hidden');
-      } else {
-        div.classList += 'showLess';
-      }
-    }
-  }
-
   listOfFollowedPullRequests(itemsNum) {
     const { classes } = this.props;
     const header = (
-      <Grid item container class={classes.bar}>
+      <Grid item container className="mainBar">
         <ListItem>
-          <ListItemText primary="Pull requests from followed repositories" />
+          <ListItemText
+            primary="Pull requests from followed repositories"
+            classes={{
+              primary: classes.mainBarFont,
+            }}
+          />
         </ListItem>
       </Grid>
     );
@@ -376,65 +313,13 @@ class Github extends Component {
         <>
           {header}
           <Divider />
-          <List dense component="nav">
+          <List dense component="nav" disablePadding="true">
             {this.state.followedPR.slice(0, itemsNum).map(pr => (
-              <ListItem key={pr.id} className="noPadding">
-                <ListItemText
-                  className="noPadding listElem"
-                  primary={
-                    <Grid
-                      container
-                      dense
-                      component="a"
-                      className="buttonHover padding"
-                      href={pr.link}
-                      onClick={() => {
-                        if (pr.hasNewComment) {
-                          pr.hasNewComment = false;
-                          this.saveInStorage();
-                        }
-                      }}
-                      style={{ textDecoration: 'none' }}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Grid item xs>
-                        <Typography>{pr.title}</Typography>
-                      </Grid>
-                      <Grid item>
-                        <Typography color="textSecondary">
-                          <ReactTimeAgo date={new Date(pr.updated)} />
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  }
-                  secondary={
-                    <div
-                      className={`paddingComment ${
-                        pr.hasNewComment ? 'isNew' : ''
-                      }`}
-                    >
-                      <div name="showMoreOrLess">{this.listComments(pr)}</div>
-                      <button
-                        ref={this.handleDisplayButton}
-                        className="commentButton right"
-                        onClick={this.handleMoreLess}
-                      >
-                        Show more
-                      </button>
-                      <button
-                        ref={this.handleReadButtonOnLoad}
-                        data-length={pr.commentsData.length}
-                        data-isnew={pr.hasNewComment}
-                        className="commentButton left"
-                        onClick={this.handleReadButton.bind(this, pr)}
-                      >
-                        {pr.hasNewComment ? 'Mark as read' : 'Mark as unread'}
-                      </button>
-                    </div>
-                  }
-                />
-              </ListItem>
+              <ListElement
+                key={pr.link}
+                pr={pr}
+                saveInStorage={this.saveInStorage}
+              />
             ))}
           </List>
         </>
@@ -458,16 +343,6 @@ class Github extends Component {
       );
   }
 
-  listComments(prObject) {
-    if (prObject.commentsData.length > 0) {
-      const length = prObject.commentsData.length;
-      const lastComment = prObject.commentsData[length - 1];
-      const result = `${lastComment.user.login}: ${lastComment.body}`;
-      return <ReactMarkdown className="noMargin" source={result} />;
-    }
-    return 'There are no comments';
-  }
-
   saveInStorage() {
     chrome.storage.local.set({
       createdPR: this.state.createdPR,
@@ -476,34 +351,6 @@ class Github extends Component {
       reviewedPR: this.state.reviewedPR,
       followedPR: this.state.followedPR,
     });
-  }
-
-  markAsReadOrUnread(prObject, e) {
-    if (prObject.hasNewComment) {
-      prObject.hasNewComment = false;
-      e.target.parentNode.classList.remove('isNew');
-      e.target.innerHTML = 'Mark as unread';
-    } else {
-      prObject.hasNewComment = true;
-      e.target.parentNode.classList.add('isNew');
-      e.target.innerHTML = 'Mark as read';
-    }
-  }
-
-  handleReadButton(prObject, e) {
-    this.markAsReadOrUnread(prObject, e);
-    this.saveInStorage();
-  }
-
-  handleReadButtonOnLoad(e) {
-    if (e) {
-      if (e.dataset.length === 0) {
-        e.classList.add('hidden');
-      }
-      if (e.dataset.isNew) {
-        e.innerHTML = 'Mark as read';
-      }
-    }
   }
 
   checkIfIsNew(e) {
@@ -530,6 +377,8 @@ class Github extends Component {
                 {...props}
                 userRelatedList={this.listOfPullRequests(2)}
                 followedList={this.listOfFollowedPullRequests(2)}
+                // userRelatedList={this.listOfPullRequests}
+                // followedList={this.listOfFollowedPullRequests}
                 user={this.state.user}
                 auth={this.state.auth}
                 token={this.state.token}
@@ -544,6 +393,7 @@ class Github extends Component {
               <UserRelatedPullRequests
                 {...props}
                 list={this.listOfPullRequests(userRelatedListSize)}
+                classes={classes}
               />
             )}
           />
@@ -553,6 +403,7 @@ class Github extends Component {
               <FollowedPullRequests
                 {...props}
                 list={this.listOfFollowedPullRequests(followedListSize)}
+                classes={classes}
               />
             )}
           />
@@ -567,29 +418,44 @@ function MainSite(props) {
     <div>
       {props.userRelatedList}
       <Divider light />
-      <Grid item container>
+      <Grid item container className="mainBar">
         <ListItem button component={RouterLink} to="/user-related">
-          <ListItemText primary="Show more" />
+          <ListItemText
+            primary="Show more"
+            classes={{
+              primary: props.classes.mainBarFont,
+            }}
+          />
           <NavigateNextIcon />
         </ListItem>
       </Grid>
       <Divider />
       {props.followedList}
       <Divider light />
-      <Grid item container>
+      <Grid item container className="mainBar">
         <ListItem button component={RouterLink} to="/followed">
-          <ListItemText primary="Show more" />
+          <ListItemText
+            primary="Show more"
+            classes={{
+              primary: props.classes.mainBarFont,
+            }}
+          />
           <NavigateNextIcon />
         </ListItem>
       </Grid>
       <Divider />
-      <Grid item container class={props.classes.bar}>
+      <Grid item container className="mainBar">
         <ListItem
           button
           component="button"
           onClick={() => chrome.runtime.openOptionsPage()}
         >
-          <ListItemText primary="Options" />
+          <ListItemText
+            primary="Options"
+            classes={{
+              primary: props.classes.mainBarFont,
+            }}
+          />
         </ListItem>
       </Grid>
     </div>
@@ -599,10 +465,15 @@ function MainSite(props) {
 function UserRelatedPullRequests(props) {
   return (
     <div>
-      <Grid item container>
+      <Grid item container className="mainBar">
         <ListItem button component={RouterLink} to="/">
           <NavigateBeforeIcon />
-          <ListItemText primary="Back" />
+          <ListItemText
+            primary="Back"
+            classes={{
+              primary: props.classes.mainBarFont,
+            }}
+          />
         </ListItem>
       </Grid>
       <Divider light />
@@ -614,10 +485,15 @@ function UserRelatedPullRequests(props) {
 function FollowedPullRequests(props) {
   return (
     <div>
-      <Grid item container>
+      <Grid item container className="mainBar">
         <ListItem button component={RouterLink} to="/">
           <NavigateBeforeIcon />
-          <ListItemText primary="Back" />
+          <ListItemText
+            primary="Back"
+            classes={{
+              primary: props.classes.mainBarFont,
+            }}
+          />
         </ListItem>
       </Grid>
       <Divider light />
@@ -638,10 +514,12 @@ MainSite.propTypes = {
 };
 
 UserRelatedPullRequests.propTypes = {
+  classes: PropTypes.object.isRequired,
   list: PropTypes.object.isRequired,
 };
 
 FollowedPullRequests.propTypes = {
+  classes: PropTypes.object.isRequired,
   list: PropTypes.object.isRequired,
 };
 
