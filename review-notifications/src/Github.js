@@ -3,21 +3,15 @@
 import React, { Component } from 'react';
 import { initialState } from './UserOptions';
 import { Route, Switch, Link as RouterLink } from 'react-router-dom';
-import ListElement from './ListElement';
+import ListOfUsersPR from './ListOfUsersPR';
+import ListOfFollowedPR from './ListOfFollowedPR';
 import './Github.css';
 
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
-import {
-  CircularProgress,
-  Divider,
-  Grid,
-  List,
-  ListItem,
-  ListItemText,
-} from '@material-ui/core';
+import { Divider, Grid, ListItem, ListItemText } from '@material-ui/core';
 
 const styles = {
   root: {
@@ -182,167 +176,6 @@ class Github extends Component {
     });
   }
 
-  listOfPullRequests(itemNum) {
-    const { classes } = this.props;
-    const list = this.state.userRelatedPRList;
-    let prompt = <ListItemText dense primary="No pull requests" />;
-
-    if (this.state.user === '')
-      prompt = (
-        <ListItemText
-          dense
-          primary="Add username to display more pull requests"
-        />
-      );
-    else if (this.state.token === '' || !this.state.auth)
-      prompt = (
-        <ListItemText dense primary="Add token to display more pull requests" />
-      );
-    else if (list.length > 0) prompt = <></>;
-
-    const header = (
-      <Grid item container className="mainBar">
-        <ListItem>
-          <ListItemText
-            primary="User related pull requests"
-            classes={{
-              primary: classes.mainBarFont,
-            }}
-          />
-        </ListItem>
-      </Grid>
-    );
-
-    if (!this.state.hasData || this.state.fetchingPullRequests)
-      return (
-        <>
-          {header}
-          <Divider />
-          <Grid item container style={{ textAlign: 'center' }}>
-            <ListItem>
-              <CircularProgress className={classes.progress} />
-            </ListItem>
-          </Grid>
-        </>
-      );
-    else if (list.length > 0) {
-      list.sort(function(a, b) {
-        return new Date(b.updated) - new Date(a.updated);
-      });
-      return (
-        <>
-          {header}
-          <Divider />
-          <List dense component="nav" disablePadding="true">
-            {this.removeDuplicates(list)
-              .slice(0, itemNum)
-              .map(pr => (
-                <ListElement
-                  key={pr.link}
-                  pr={pr}
-                  saveInStorage={this.saveInStorage}
-                />
-              ))}
-          </List>
-          <Grid item container>
-            <ListItem>{prompt}</ListItem>
-          </Grid>
-        </>
-      );
-    } else
-      return (
-        <>
-          {header}
-          <Divider />
-          <Grid item container>
-            <ListItem>{prompt}</ListItem>
-          </Grid>
-        </>
-      );
-  }
-
-  removeDuplicates(list) {
-    const setOfLinks = new Set();
-    list.forEach(item => setOfLinks.add(item.link));
-    const listWithoutDuplicates = [];
-    list.forEach(item => {
-      if (setOfLinks.has(item.link)) {
-        setOfLinks.delete(item.link);
-        listWithoutDuplicates.push(item);
-      }
-    });
-    return listWithoutDuplicates;
-  }
-
-  listOfFollowedPullRequests(itemsNum) {
-    const { classes } = this.props;
-    const header = (
-      <Grid item container className="mainBar">
-        <ListItem>
-          <ListItemText
-            primary="Pull requests from followed repositories"
-            classes={{
-              primary: classes.mainBarFont,
-            }}
-          />
-        </ListItem>
-      </Grid>
-    );
-    if (this.state.fetchingFollowedRepos) {
-      return (
-        <>
-          {header}
-          <Divider />
-          <Grid item container>
-            <ListItem style={{ textAlign: 'center' }}>
-              <CircularProgress className={classes.progress} />
-            </ListItem>
-          </Grid>
-        </>
-      );
-    } else if (
-      this.state.followedPR.length > 0 &&
-      this.state.prOptions.find(
-        option => option.value === options.FOLLOWED && option.isChecked === true
-      )
-    ) {
-      this.state.followedPR.sort(function(a, b) {
-        return new Date(b.updated) - new Date(a.updated);
-      });
-      return (
-        <>
-          {header}
-          <Divider />
-          <List dense component="nav" disablePadding="true">
-            {this.state.followedPR.slice(0, itemsNum).map(pr => (
-              <ListElement
-                key={pr.link}
-                pr={pr}
-                saveInStorage={this.saveInStorage}
-              />
-            ))}
-          </List>
-        </>
-      );
-    } else
-      return (
-        <>
-          {header}
-          <Divider />
-          <Grid item container>
-            <ListItem>
-              <ListItemText
-                dense
-                primary="You do not have any followed repositories or option to display them
-                  is not checked."
-                target
-              />
-            </ListItem>
-          </Grid>
-        </>
-      );
-  }
-
   saveInStorage() {
     chrome.storage.local.set({
       createdPR: this.state.createdPR,
@@ -363,8 +196,6 @@ class Github extends Component {
   render() {
     let { location } = this.props;
     const { classes } = this.props;
-    const userRelatedListSize = this.state.userRelatedPRList.length;
-    const followedListSize = this.state.followedPR.length;
 
     return (
       <div className={classes.root}>
@@ -375,15 +206,16 @@ class Github extends Component {
             render={props => (
               <MainSite
                 {...props}
-                userRelatedList={this.listOfPullRequests(2)}
-                followedList={this.listOfFollowedPullRequests(2)}
-                // userRelatedList={this.listOfPullRequests}
-                // followedList={this.listOfFollowedPullRequests}
+                classes={classes}
                 user={this.state.user}
                 auth={this.state.auth}
                 token={this.state.token}
                 hasData={this.state.hasData}
-                classes={classes}
+                saveInStorage={this.saveInStorage}
+                followedPR={this.state.followedPR}
+                prOptions={this.state.prOptions}
+                fetchingFollowedRepos={this.state.fetchingFollowedRepos}
+                userRelatedPRList={this.state.userRelatedPRList}
               />
             )}
           />
@@ -392,8 +224,16 @@ class Github extends Component {
             render={props => (
               <UserRelatedPullRequests
                 {...props}
-                list={this.listOfPullRequests(userRelatedListSize)}
                 classes={classes}
+                itemsNum={this.state.userRelatedPRList.length}
+                user={this.state.user}
+                auth={this.state.auth}
+                token={this.state.token}
+                hasData={this.state.hasData}
+                saveInStorage={this.saveInStorage}
+                followedPR={this.state.followedPR}
+                fetchingFollowedRepos={this.state.fetchingFollowedRepos}
+                userRelatedPRList={this.state.userRelatedPRList}
               />
             )}
           />
@@ -402,8 +242,12 @@ class Github extends Component {
             render={props => (
               <FollowedPullRequests
                 {...props}
-                list={this.listOfFollowedPullRequests(followedListSize)}
                 classes={classes}
+                itemsNum={this.state.followedPR.length}
+                saveInStorage={this.saveInStorage}
+                followedPR={this.state.followedPR}
+                prOptions={this.state.prOptions}
+                fetchingFollowedRepos={this.state.fetchingFollowedRepos}
               />
             )}
           />
@@ -416,7 +260,16 @@ class Github extends Component {
 function MainSite(props) {
   return (
     <div>
-      {props.userRelatedList}
+      <ListOfUsersPR
+        itemsNum={2}
+        user={props.user}
+        auth={props.auth}
+        token={props.token}
+        hasData={props.hasData}
+        saveInStorage={props.saveInStorage}
+        fetchingFollowedRepos={props.fetchingFollowedRepos}
+        userRelatedPRList={props.userRelatedPRList}
+      />
       <Divider light />
       <Grid item container className="mainBar">
         <ListItem button component={RouterLink} to="/user-related">
@@ -430,7 +283,13 @@ function MainSite(props) {
         </ListItem>
       </Grid>
       <Divider />
-      {props.followedList}
+      <ListOfFollowedPR
+        itemsNum={2}
+        saveInStorage={props.saveInStorage}
+        followedPR={props.followedPR}
+        prOptions={props.prOptions}
+        fetchingFollowedRepos={props.fetchingFollowedRepos}
+      />
       <Divider light />
       <Grid item container className="mainBar">
         <ListItem button component={RouterLink} to="/followed">
@@ -477,7 +336,16 @@ function UserRelatedPullRequests(props) {
         </ListItem>
       </Grid>
       <Divider light />
-      {props.list}
+      <ListOfUsersPR
+        itemsNum={props.itemsNum}
+        user={props.user}
+        auth={props.auth}
+        token={props.token}
+        hasData={props.hasData}
+        saveInStorage={props.saveInStorage}
+        fetchingFollowedRepos={props.fetchingFollowedRepos}
+        userRelatedPRList={props.userRelatedPRList}
+      />
     </div>
   );
 }
@@ -497,7 +365,13 @@ function FollowedPullRequests(props) {
         </ListItem>
       </Grid>
       <Divider light />
-      {props.list}
+      <ListOfFollowedPR
+        itemsNum={props.itemsNum}
+        saveInStorage={props.saveInStorage}
+        followedPR={props.followedPR}
+        prOptions={props.prOptions}
+        fetchingFollowedRepos={props.fetchingFollowedRepos}
+      />
     </div>
   );
 }
@@ -509,18 +383,40 @@ Github.propTypes = {
 
 MainSite.propTypes = {
   classes: PropTypes.object.isRequired,
-  userRelatedList: PropTypes.object.isRequired,
+  itemsNum: PropTypes.number,
+  saveInStorage: PropTypes.func,
+  user: PropTypes.string,
+  token: PropTypes.number,
+  auth: PropTypes.bool,
+  hasData: PropTypes.bool,
+  fetchingPullRequests: PropTypes.bool,
+  userRelatedPRList: PropTypes.array,
+  prOptions: PropTypes.array,
+  fetchingFollowedRepos: PropTypes.bool,
   followedList: PropTypes.object.isRequired,
+  followedPR: PropTypes.array,
 };
 
 UserRelatedPullRequests.propTypes = {
   classes: PropTypes.object.isRequired,
-  list: PropTypes.object.isRequired,
+  user: PropTypes.string,
+  token: PropTypes.number,
+  auth: PropTypes.bool,
+  hasData: PropTypes.bool,
+  fetchingPullRequests: PropTypes.bool,
+  itemsNum: PropTypes.number,
+  saveInStorage: PropTypes.func,
+  userRelatedPRList: PropTypes.array,
+  fetchingFollowedRepos: PropTypes.bool,
 };
 
 FollowedPullRequests.propTypes = {
   classes: PropTypes.object.isRequired,
-  list: PropTypes.object.isRequired,
+  itemsNum: PropTypes.number,
+  saveInStorage: PropTypes.func,
+  followedPR: PropTypes.array,
+  prOptions: PropTypes.array,
+  fetchingFollowedRepos: PropTypes.bool,
 };
 
 export default withStyles(styles)(Github);
