@@ -304,11 +304,7 @@ function MainSite(props) {
       </Grid>
       <Divider />
       <Grid item container className="mainBar">
-        <ListItem
-          button
-          component="button"
-          onClick={() => chrome.runtime.openOptionsPage()}
-        >
+        <ListItem button onClick={() => chrome.runtime.openOptionsPage()}>
           <ListItemText
             primary="Options"
             classes={{

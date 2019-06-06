@@ -6,7 +6,13 @@ import './ListElement.css';
 
 import PropTypes from 'prop-types';
 
-import { Grid, ListItem, ListItemText, Typography } from '@material-ui/core';
+import {
+  Button,
+  Grid,
+  ListItem,
+  ListItemText,
+  Typography,
+} from '@material-ui/core';
 
 class ListElement extends Component {
   constructor(props) {
@@ -20,9 +26,13 @@ class ListElement extends Component {
   }
 
   componentDidMount() {
-    if (this.divWithComments.clientHeight > 40) {
+    if (this.divWithComments.clientHeight > 20) {
       this.setState({
         overflows: true,
+        fullShown: false,
+      });
+    } else {
+      this.setState({
         fullShown: false,
       });
     }
@@ -79,7 +89,7 @@ class ListElement extends Component {
             >
               <div
                 name="showMoreOrLess"
-                class={this.state.fullShown ? '' : 'showLess'}
+                className={this.state.fullShown ? '' : 'showLess'}
                 ref={r => {
                   this.divWithComments = r;
                 }}
@@ -88,7 +98,9 @@ class ListElement extends Component {
               </div>
               <>
                 {this.state.overflows && (
-                  <button
+                  <Button
+                    variant="outlined"
+                    color="primary"
                     value="ready"
                     className="commentButton right"
                     onClick={() => {
@@ -96,9 +108,11 @@ class ListElement extends Component {
                     }}
                   >
                     {`SHOW ${this.state.fullShown ? 'LESS' : 'MORE'}`}
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="outlined"
+                  color="primary"
                   data-length={this.props.pr.commentsData.length}
                   data-isnew={this.state.read}
                   className={`commentButton left ${
@@ -107,7 +121,7 @@ class ListElement extends Component {
                   onClick={() => this.setReadStatus(!this.state.read)}
                 >
                   {this.state.read ? 'MARK AS UNREAD' : 'MARK AS READ'}
-                </button>
+                </Button>
               </>
             </div>
           }
