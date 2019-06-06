@@ -9,6 +9,25 @@ import PropTypes from 'prop-types';
 import { Grid, ListItem, ListItemText, Typography } from '@material-ui/core';
 
 class ListElement extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      overflows: false,
+      fullShown: true,
+      read: !this.props.pr.hasNewComment,
+    };
+    this.setReadStatus = this.setReadStatus.bind(this);
+  }
+
+  componentDidMount() {
+    if (this.divWithComments.clientHeight > 40) {
+      this.setState({
+        overflows: true,
+        fullShown: false,
+      });
+    }
+  }
+
   listComments(prObject) {
     if (prObject.commentsData.length > 0) {
       const length = prObject.commentsData.length;
@@ -19,53 +38,9 @@ class ListElement extends Component {
     return 'There are no comments';
   }
 
-  handleDisplayButton(e) {
-    if (e) {
-      var div = e.previousElementSibling;
-      if (div.clientHeight <= 40) {
-        e.classList.add('hidden');
-      } else {
-        div.classList += 'showLess';
-      }
-    }
-  }
-
-  handleMoreLess(e) {
-    const div = e.target.previousSibling;
-    if (div.className === 'showLess') {
-      div.className = '';
-      e.target.innerHTML = 'show less';
-    } else {
-      div.className += 'showLess';
-      e.target.innerHTML = 'show more';
-    }
-  }
-
-  handleReadButtonOnLoad(e) {
-    if (e) {
-      if (e.dataset.length === 0) {
-        e.classList.add('hidden');
-      }
-      if (e.dataset.isNew) {
-        e.innerHTML = 'Mark as read';
-      }
-    }
-  }
-
-  markAsReadOrUnread(prObject, e) {
-    if (prObject.hasNewComment) {
-      prObject.hasNewComment = false;
-      e.target.parentNode.classList.remove('isNew');
-      e.target.innerHTML = 'Mark as unread';
-    } else {
-      prObject.hasNewComment = true;
-      e.target.parentNode.classList.add('isNew');
-      e.target.innerHTML = 'Mark as read';
-    }
-  }
-
-  handleReadButton(prObject, e) {
-    this.markAsReadOrUnread(prObject, e);
+  setReadStatus(read) {
+    this.setState({ read });
+    this.props.pr.hasNewComment = !read;
     this.props.saveInStorage();
   }
 
@@ -81,12 +56,7 @@ class ListElement extends Component {
               component="a"
               className="buttonHover padding"
               href={this.props.pr.link}
-              onClick={() => {
-                if (this.props.pr.hasNewComment) {
-                  this.props.pr.hasNewComment = false;
-                  this.props.saveInStorage();
-                }
-              }}
+              onClick={() => this.setReadStatus(true)}
               style={{ textDecoration: 'none' }}
               target="_blank"
               rel="noopener noreferrer"
@@ -107,27 +77,38 @@ class ListElement extends Component {
                 'paddingComment ' + (this.props.pr.hasNewComment ? 'isNew' : '')
               }
             >
-              <div name="showMoreOrLess">
+              <div
+                name="showMoreOrLess"
+                class={this.state.fullShown ? '' : 'showLess'}
+                ref={r => {
+                  this.divWithComments = r;
+                }}
+              >
                 {this.listComments(this.props.pr)}
               </div>
-              <button
-                ref={this.handleDisplayButton}
-                className="commentButton right"
-                onClick={this.handleMoreLess}
-              >
-                Show more
-              </button>
-              <button
-                ref={this.handleReadButtonOnLoad}
-                data-length={this.props.pr.commentsData.length}
-                data-isnew={this.props.pr.hasNewComment}
-                className="commentButton left"
-                onClick={this.handleReadButton.bind(this, this.props.pr)}
-              >
-                {this.props.pr.hasNewComment
-                  ? 'Mark as read'
-                  : 'Mark as unread'}
-              </button>
+              <>
+                {this.state.overflows && (
+                  <button
+                    value="ready"
+                    className="commentButton right"
+                    onClick={() => {
+                      this.setState({ fullShown: !this.state.fullShown });
+                    }}
+                  >
+                    {`SHOW ${this.state.fullShown ? 'LESS' : 'MORE'}`}
+                  </button>
+                )}
+                <button
+                  data-length={this.props.pr.commentsData.length}
+                  data-isnew={this.state.read}
+                  className={`commentButton left ${
+                    this.state.read ? '' : 'isNew'
+                  }`}
+                  onClick={() => this.setReadStatus(!this.state.read)}
+                >
+                  {this.state.read ? 'MARK AS UNREAD' : 'MARK AS READ'}
+                </button>
+              </>
             </div>
           }
         />
