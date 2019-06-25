@@ -19,7 +19,7 @@ async function checkForDifferences() {
 function checkDataFromChromeStorage(listOfPRs, stateName) {
   if (listOfPRs && listOfPRs.length > 0)
     mainBg.state[stateName].map(currPR => {
-      const pr = listOfPRs.find(resPr => resPr.link === currPR.link);
+      const pr = listOfPRs.find(resPr => resPr && resPr.link === currPR.link);
       if (pr) currPR.hasNewComment = pr.hasNewComment;
       if (pr && currPR.updated !== pr.updated)
         checkForNewComments(currPR, pr.updated);

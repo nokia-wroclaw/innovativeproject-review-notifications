@@ -35,9 +35,6 @@ exports.state = state;
 exports.options = options;
 
 chrome.runtime.onInstalled.addListener(function() {
-  chrome.notifications.onClicked.addListener(function(htmlUrl) {
-    chrome.tabs.create({ url: htmlUrl });
-  });
   onStart();
 });
 
@@ -53,7 +50,12 @@ chrome.runtime.onMessage.addListener(async request => {
   }
 });
 
+chrome.runtime.onRestartRequired.addListener(onStart());
+
 function onStart() {
+  chrome.notifications.onClicked.addListener(function(htmlUrl) {
+    chrome.tabs.create({ url: htmlUrl });
+  });
   chrome.storage.local.get(
     ['username', 'auth', 'token', 'prTypes', 'followedRepos'],
     function(result) {
